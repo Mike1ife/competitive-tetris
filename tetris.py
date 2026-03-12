@@ -7,6 +7,7 @@ from config import (
     TETROMINOS,
     COLORS,
     FALL_INTERVAL,
+    ACCELERATE_INTERVAL,
     CELL_SIZE,
     BOARD_H,
     BOARD_W,
@@ -38,6 +39,8 @@ class Tetris:
         self.game_over = False
         self.score = 0
         self._fall_timer = 0
+
+        self.accelerate = False
 
     # Respawn new piece once we start the game or place a piece
     def _respawn_piece(self) -> Piece:
@@ -126,14 +129,20 @@ class Tetris:
     # Handle event
     # This method is used to handle user's key event
     def handle_event(self, event: pygame.event.Event):
-        # KEYDOWN != K_DOWN
-        if self.game_over or event.type != pygame.KEYDOWN:
+        if self.game_over:
             return
 
-        for command, (key, _) in self.commands.items():
-            if event.key == key:
-                self.execute(command)
-                break
+        down_key = self.commands["down"][0]
+
+        if event.type == pygame.KEYDOWN and event.key == down_key:
+            self.accelerate = True
+        elif event.type == pygame.KEYUP and event.key == down_key:
+            self.accelerate = False
+        elif event.type == pygame.KEYDOWN:
+            for command, (key, _) in self.commands.items():
+                if event.key == key:
+                    self.execute(command)
+                    break
 
     # Execute command
     # This method is used to execute agent's command input
@@ -156,10 +165,6 @@ class Tetris:
             piece.shape, piece.row, piece.col + 1
         ):
             piece.col += 1
-        elif command == "down" and self._can_move_to(
-            piece.shape, piece.row + 1, piece.col
-        ):
-            piece.row += 1
         elif command == "rotate":
             rotated_shape = np.rot90(piece.shape.copy(), k=3)
             if self._can_move_to(rotated_shape, piece.row, piece.col):
@@ -170,8 +175,9 @@ class Tetris:
             return
 
         # automatically drop the piece with timer
+        interval = ACCELERATE_INTERVAL if self.accelerate else FALL_INTERVAL
         self._fall_timer += delta
-        if self._fall_timer >= FALL_INTERVAL:
+        if self._fall_timer >= interval:
             self._fall_timer = 0
             piece = self.piece
             # move downward, if cannot, place it

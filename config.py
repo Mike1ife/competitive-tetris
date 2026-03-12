@@ -9,7 +9,8 @@ PADDING = 20  # distance between two boards
 WIN_W = BOARD_W * 2 + PADDING  # window width
 WIN_H = BOARD_H  # window height
 FPS = 60
-FALL_INTERVAL = 200  # drop rate = 200 ms
+FALL_INTERVAL = 500  # drop rate = 500 ms
+ACCELERATE_INTERVAL = 50  # accelerate rate (pressing down) = 50 ms
 MAX_GARBAGE_HOLE = 3  # maximum holes in a garbage line
 
 COLORS = {
