@@ -41,6 +41,7 @@ P1_COMMANDS = {
     "right": (pygame.K_d, "d"),
     "down": (pygame.K_s, "s"),
     "rotate": (pygame.K_w, "w"),
+    "drop": (pygame.K_SPACE, "p"),
 }
 
 P2_COMMANDS = {
@@ -48,4 +49,5 @@ P2_COMMANDS = {
     "right": (pygame.K_RIGHT, "r"),
     "down": (pygame.K_DOWN, "n"),
     "rotate": (pygame.K_UP, "u"),
+    "drop": (pygame.K_KP_0, "0"),
 }

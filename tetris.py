@@ -93,7 +93,7 @@ class Tetris:
             if all(self.board[row]):
                 complete_lines.append(row)
                 # use color to check if it's a garbage line
-                if self.cell_colors[row][0] == 8:
+                if 8 in self.cell_colors[row]:
                     garbage_line_count += 1
 
         if not complete_lines:
@@ -169,6 +169,9 @@ class Tetris:
             rotated_shape = np.rot90(piece.shape.copy(), k=3)
             if self._can_move_to(rotated_shape, piece.row, piece.col):
                 piece.shape = rotated_shape
+        elif command == "drop":
+            while self._can_move_to(piece.shape, piece.row + 1, piece.col):
+                piece.row += 1
 
     def update(self, delta: int):
         if self.game_over:
