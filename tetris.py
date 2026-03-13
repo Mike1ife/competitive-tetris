@@ -29,26 +29,27 @@ class Piece:
 
 class Tetris:
     def __init__(self, x_offset: int, commands: dict):
+        # render window offset (for placement)
         self.x_offset = x_offset
         self.commands = commands
-
+        # only track placed pieces / garbage
         self.board = np.zeros((ROWS, COLS), dtype=int)
         self.cell_colors = np.zeros((ROWS, COLS), dtype=int)
-        self.piece = self._respawn_piece()
-        self.opponent: Tetris = None  # Also Tetris object
+        self.piece: Piece = self._respawn_piece()
+        self.opponent: Tetris = None  # Also a Tetris object
         self.game_over = False
         self.score = 0
         self._fall_timer = 0
 
         self.accelerate = False
 
-    # Respawn new piece once we start the game or place a piece
     def _respawn_piece(self) -> Piece:
+        """Respawn new piece once we start the game or place a piece"""
         shape, color_id = random.choice(TETROMINOS)
         return Piece(shape, color_id)
 
-    # Check whether we can move shape to (row, col)
     def _can_move_to(self, shape: np.ndarray, row: int, col: int) -> bool:
+        """Check whether we can move shape to (row, col)"""
         for r, c in np.argwhere(shape):
             # r, c represent local coordinate of the shape where shape[r, c] = 1
             # shape position + local coordinate = position of TETROMINOS
@@ -61,8 +62,8 @@ class Tetris:
                 return False
         return True
 
-    # Place a piece
     def _place(self):
+        """Place a piece"""
         piece = self.piece
         for r, c in np.argwhere(piece.shape):
             row = piece.row + r
@@ -75,7 +76,9 @@ class Tetris:
             self.board[row][col] = 1
             self.cell_colors[row][col] = piece.color_id
 
-        cleared_count = self._clear_lines()
+        cleared_count, new_board, new_cell_colors = self._clear_lines()
+        self.board = new_board
+        self.cell_colors = new_cell_colors
         if cleared_count and self.opponent:
             self.opponent.respawn_garbage_lines(cleared_count)
 
@@ -84,8 +87,8 @@ class Tetris:
         if not self._can_move_to(self.piece.shape, self.piece.row, self.piece.col):
             self.game_over = True
 
-    # Clear lines (return number of cleared lines, excluding garbage lines)
-    def _clear_lines(self) -> int:
+    def _clear_lines(self) -> tuple[int, np.ndarray, np.ndarray]:
+        """Clear lines (return number of cleared lines, excluding garbage lines, and resultant board)"""
         # separately count complete normal lines and garbage lines
         complete_lines = []
         garbage_line_count = 0
@@ -96,24 +99,21 @@ class Tetris:
                 if 8 in self.cell_colors[row]:
                     garbage_line_count += 1
 
-        if not complete_lines:
-            return 0
-
         self.score += len(complete_lines) - garbage_line_count
         # Re-fill the board by placing empty lines on top of remaining rows
         remaining_lines = [row for row in range(ROWS) if row not in complete_lines]
         empty_lines = np.zeros((len(complete_lines), COLS), dtype=int)
 
         # Stack vertically (empty -> remaining)
-        self.board = np.vstack((empty_lines.copy(), self.board[remaining_lines]))
-        self.cell_colors = np.vstack(
+        new_board = np.vstack((empty_lines.copy(), self.board[remaining_lines]))
+        new_cell_colors = np.vstack(
             (empty_lines.copy(), self.cell_colors[remaining_lines])
         )
 
-        return len(complete_lines) - garbage_line_count
+        return len(complete_lines) - garbage_line_count, new_board, new_cell_colors
 
-    # Respawn garbage lines
     def respawn_garbage_lines(self, count: int):
+        """Respawn garbage lines"""
         garbage_lines = []
         for _ in range(count):
             row = np.ones(COLS, dtype=int)
@@ -126,9 +126,8 @@ class Tetris:
         self.board = np.vstack((self.board[count:], garbage_lines))
         self.cell_colors = np.vstack((self.cell_colors[count:], garbage_lines * 8))
 
-    # Handle event
-    # This method is used to handle user's key event
     def handle_event(self, event: pygame.event.Event):
+        """This method is used to handle user's key event"""
         if self.game_over:
             return
 
@@ -144,10 +143,9 @@ class Tetris:
                     self.execute(command)
                     break
 
-    # Execute command
-    # This method is used to execute agent's command input
     def execute(self, command: str):
-        if command not in self.commands:
+        """This method is used to execute agent's command input"""
+        if self.game_over or command not in self.commands:
             return
 
         # execute pygame event
@@ -166,7 +164,7 @@ class Tetris:
         ):
             piece.col += 1
         elif command == "rotate":
-            rotated_shape = np.rot90(piece.shape.copy(), k=3)
+            rotated_shape = np.rot90(piece.shape.copy(), axes=(1, 0))
             if self._can_move_to(rotated_shape, piece.row, piece.col):
                 piece.shape = rotated_shape
         elif command == "drop":
@@ -174,6 +172,7 @@ class Tetris:
                 piece.row += 1
 
     def update(self, delta: int):
+        """Updating board with auto drop"""
         if self.game_over:
             return
 
@@ -190,6 +189,7 @@ class Tetris:
                 self._place()
 
     def render(self, screen: pygame.surface.Surface, font: pygame.font.Font):
+        """Render the board"""
         # draw board (rect) on screen (window)
         for row in range(ROWS):
             for col in range(COLS):
@@ -231,3 +231,28 @@ class Tetris:
                 message,
                 (self.x_offset + BOARD_W // 2 - message.get_width() // 2, BOARD_H // 2),
             )
+
+    """TODO Get info for reward"""
+    # NOTE: I think we need to include the number of lines the opponent current have into our reward
+    # The inutition is if we can end the opponent with 1 or 2 extra garbage lines, it should
+    # be rewarded at maximum.
+    # Also, the training agent should simulate the action itself. It's the not responsibility of Tetris.
+
+    def get_game_state():
+        """Return game state properties needed for reward calcultation"""
+        ...
+
+    def _get_bumpiness():
+        """Get bumpiness of the board"""
+        ...
+
+    def _get_height():
+        """Get the height of the board"""
+        ...
+
+    def _get_holes():
+        """Get holes in the board"""
+        ...
+
+    """ADD MORE IF NEEDED"""
+    # ......
