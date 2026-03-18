@@ -1,6 +1,8 @@
 import pygame
 import numpy as np
 
+AGENT_SOURCE = "agent_source"
+
 CELL_SIZE = 30  # cell size
 ROWS, COLS = 20, 10  # row cell num, col cell num
 BOARD_W = COLS * CELL_SIZE  # board width
@@ -12,6 +14,8 @@ FPS = 60
 FALL_INTERVAL = 500  # drop rate = 500 ms
 ACCELERATE_INTERVAL = 50  # accelerate rate (pressing down) = 50 ms
 MAX_GARBAGE_HOLE = 3  # maximum holes in a garbage line
+
+AGENT_CAPS = {"easy": 7, "medium": 5, "hard": 3, "none": 0}
 
 COLORS = {
     0: (30, 30, 30),  # Background
