@@ -1,4 +1,3 @@
-import argparse
 import pygame
 from config import (
     WIN_W,
@@ -11,7 +10,7 @@ from config import (
     AGENT_CAPS,
 )
 from tetris import Tetris
-from agent import Agent
+from models.agent import Agent
 from home import run_home
 
 
