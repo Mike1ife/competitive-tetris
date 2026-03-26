@@ -1,5 +1,6 @@
 .vscode/*
 __pycache__/*
+models/__pycache__/*
 
 /firebase-debug.log
 .idea/

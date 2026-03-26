@@ -5,6 +5,8 @@ from config import (
     ROWS,
     COLS,
     TETROMINOS,
+    TETROMINOS_NAMES,
+    WALL_KICKS,
     COLORS,
     FALL_INTERVAL,
     ACCELERATE_INTERVAL,
@@ -22,9 +24,7 @@ class Piece:
         # Generate at the middle of the top
         self.row = 0
         self.col = COLS // 2 - shape.shape[1] // 2
-
-    def rotate(self):
-        self.shape = np.rot90(self.shape).copy()
+        self.rotation_id = 0
 
 
 class Tetris:
@@ -43,82 +43,6 @@ class Tetris:
         self._fall_timer = 0
 
         self.accelerate = False
-
-    def _respawn_piece(self) -> Piece:
-        """Respawn new piece once we start the game or place a piece"""
-        # 7-bag system means we put all unique pieces into the bag and shuffle it
-        # each time we take one piece from the bag until it's empty
-        # then we refill and shuffle again
-        if not self.bag:
-            self.bag = TETROMINOS.copy()
-            random.shuffle(self.bag)
-
-        shape, color_id = self.bag.pop()
-        return Piece(shape, color_id)
-
-    def _can_move_to(self, shape: np.ndarray, row: int, col: int) -> bool:
-        """Check whether we can move shape to (row, col)"""
-        for r, c in np.argwhere(shape):
-            # r, c represent local coordinate of the shape where shape[r, c] = 1
-            # shape position + local coordinate = position of TETROMINOS
-            new_row = row + r
-            new_col = col + c
-            # return False if collide
-            if new_row < 0 or new_row >= ROWS or new_col < 0 or new_col >= COLS:
-                return False
-            if self.board[new_row][new_col]:
-                return False
-        return True
-
-    def _place(self):
-        """Place a piece"""
-        piece = self.piece
-        for r, c in np.argwhere(piece.shape):
-            row = piece.row + r
-            col = piece.col + c
-
-            if row < 0:
-                self.game_over = True
-                return
-
-            self.board[row][col] = 1
-            self.cell_colors[row][col] = piece.color_id
-
-        cleared_count, new_board, new_cell_colors = self._clear_lines()
-        self.board = new_board
-        self.cell_colors = new_cell_colors
-        if cleared_count and self.opponent:
-            self.opponent.respawn_garbage_lines(cleared_count)
-
-        self.piece = self._respawn_piece()
-        # game is automatically over if respawned piece cannot be placed
-        if not self._can_move_to(self.piece.shape, self.piece.row, self.piece.col):
-            self.game_over = True
-
-    def _clear_lines(self) -> tuple[int, np.ndarray, np.ndarray]:
-        """Clear lines (return number of cleared lines, excluding garbage lines, and resultant board)"""
-        # separately count complete normal lines and garbage lines
-        complete_lines = []
-        garbage_line_count = 0
-        for row in range(ROWS):
-            if all(self.board[row]):
-                complete_lines.append(row)
-                # use color to check if it's a garbage line
-                if 8 in self.cell_colors[row]:
-                    garbage_line_count += 1
-
-        self.score += len(complete_lines) - garbage_line_count
-        # Re-fill the board by placing empty lines on top of remaining rows
-        remaining_lines = [row for row in range(ROWS) if row not in complete_lines]
-        empty_lines = np.zeros((len(complete_lines), COLS), dtype=int)
-
-        # Stack vertically (empty -> remaining)
-        new_board = np.vstack((empty_lines.copy(), self.board[remaining_lines]))
-        new_cell_colors = np.vstack(
-            (empty_lines.copy(), self.cell_colors[remaining_lines])
-        )
-
-        return len(complete_lines) - garbage_line_count, new_board, new_cell_colors
 
     def respawn_garbage_lines(self, count: int):
         """Respawn garbage lines"""
@@ -172,9 +96,13 @@ class Tetris:
         ):
             piece.col += 1
         elif command == "rotate":
-            rotated_shape = np.rot90(piece.shape.copy(), axes=(1, 0))
-            if self._can_move_to(rotated_shape, piece.row, piece.col):
-                piece.shape = rotated_shape
+            rotated_shape = self._try_rotate(piece, piece.row, piece.col)
+            if rotated_shape is not None:
+                new_shape, new_row, new_col = rotated_shape
+                piece.shape = new_shape
+                piece.row = new_row
+                piece.col = new_col
+                piece.rotation_id = (piece.rotation_id + 1) % 4
         elif command == "drop":
             while self._can_move_to(piece.shape, piece.row + 1, piece.col):
                 piece.row += 1
@@ -240,6 +168,103 @@ class Tetris:
                 (self.x_offset + BOARD_W // 2 - message.get_width() // 2, BOARD_H // 2),
             )
 
+    def _respawn_piece(self) -> Piece:
+        """Respawn new piece once we start the game or place a piece"""
+        # 7-bag system means we put all unique pieces into the bag and shuffle it
+        # each time we take one piece from the bag until it's empty
+        # then we refill and shuffle again
+        if not self.bag:
+            self.bag = TETROMINOS.copy()
+            random.shuffle(self.bag)
+
+        shape, color_id = self.bag.pop()
+        return Piece(shape, color_id)
+
+    def _can_move_to(self, shape: np.ndarray, row: int, col: int) -> bool:
+        """Check whether we can move shape to (row, col)"""
+        for r, c in np.argwhere(shape):
+            # r, c represent local coordinate of the shape where shape[r, c] = 1
+            # shape position + local coordinate = position of TETROMINOS
+            new_row = row + r
+            new_col = col + c
+            # return False if collide
+            if new_row < 0 or new_row >= ROWS or new_col < 0 or new_col >= COLS:
+                return False
+            if self.board[new_row][new_col]:
+                return False
+        return True
+
+    def _get_kick_offsets(
+        self, piece_id: int, current_rotation_id: int, target_rotation_id: int
+    ) -> list:
+        return WALL_KICKS[TETROMINOS_NAMES[piece_id]][
+            (current_rotation_id, target_rotation_id)
+        ]
+
+    def _try_rotate(
+        self, piece: Piece, row: int, col: int
+    ) -> tuple[np.ndarray, int, int] | None:
+        shape = piece.shape
+        rotated_shape = np.rot90(shape, axes=(1, 0))
+        for drow, dcol in self._get_kick_offsets(
+            piece.color_id, piece.rotation_id, (piece.rotation_id + 1) % 4
+        ):
+            new_row = row + drow
+            new_col = col + dcol
+            if self._can_move_to(rotated_shape, new_row, new_col):
+                return rotated_shape, new_row, new_col
+        return None
+
+    def _place(self):
+        """Place a piece"""
+        piece = self.piece
+        for r, c in np.argwhere(piece.shape):
+            row = piece.row + r
+            col = piece.col + c
+
+            if row < 0:
+                self.game_over = True
+                return
+
+            self.board[row][col] = 1
+            self.cell_colors[row][col] = piece.color_id
+
+        cleared_count, new_board, new_cell_colors = self._clear_lines()
+        self.board = new_board
+        self.cell_colors = new_cell_colors
+        if cleared_count and self.opponent:
+            self.opponent.respawn_garbage_lines(cleared_count)
+
+        self.piece = self._respawn_piece()
+        # game is automatically over if respawned piece cannot be placed
+        if not self._can_move_to(self.piece.shape, self.piece.row, self.piece.col):
+            self.game_over = True
+
+    def _clear_lines(self) -> tuple[int, np.ndarray, np.ndarray]:
+        """Clear lines (return number of cleared lines, excluding garbage lines, and resultant board)"""
+        # separately count complete normal lines and garbage lines
+        complete_lines = []
+        garbage_line_count = 0
+        for row in range(ROWS):
+            if all(self.board[row]):
+                complete_lines.append(row)
+                # use color to check if it's a garbage line
+                if 8 in self.cell_colors[row]:
+                    garbage_line_count += 1
+
+        self.score += len(complete_lines) - garbage_line_count
+        # Re-fill the board by placing empty lines on top of remaining rows
+        remaining_lines = [row for row in range(ROWS) if row not in complete_lines]
+        empty_lines = np.zeros((len(complete_lines), COLS), dtype=int)
+
+        # Stack vertically (empty -> remaining)
+        new_board = np.vstack((empty_lines.copy(), self.board[remaining_lines]))
+        new_cell_colors = np.vstack(
+            (empty_lines.copy(), self.cell_colors[remaining_lines])
+        )
+
+        return len(complete_lines) - garbage_line_count, new_board, new_cell_colors
+
     # NOTE: I think we need to include the number of lines the opponent current have into our reward
     # The intuition is if we can end the opponent with 1 or 2 extra garbage lines, it should
     # be rewarded at maximum.
@@ -265,7 +290,6 @@ class Tetris:
             "holes": self._get_holes(heights),
         }
 
-
     def _get_bumpiness(self, heights: np.ndarray = None) -> int:
         """Get bumpiness of the board"""
         if heights is None:
@@ -274,7 +298,6 @@ class Tetris:
         for col in range(COLS - 1):
             bumpiness += abs(heights[col] - heights[col + 1])
         return bumpiness
-
 
     def _get_holes(self, heights: np.ndarray = None) -> int:
         """Get holes in the board"""
@@ -287,8 +310,6 @@ class Tetris:
                     if not self.board[row][col]:
                         holes += 1
         return holes
-
-
 
     # TODO: ADD MORE IF NEEDED
     # not for now

@@ -39,6 +39,13 @@ class Game:
         self.p1.opponent = self.p2
         self.p2.opponent = self.p1
 
+        # pending commands
+        self.p1_pending = []
+        self.p2_pending = []
+        # current handling piece id
+        self.p1_piece_id = None
+        self.p2_piece_id = None
+
     def _load_agent(self, source: str, commands: list):
         if not source:
             return None
@@ -62,15 +69,31 @@ class Game:
             pygame.display.flip()
 
     def _agent_event(self):
-        if self.p1_agent:
-            """TODO Agent output a command corresponding to action"""
-            command = self.p1_agent.random_move()
-            self.p1.execute(command)
+        if self.p1_agent and not self.p1.game_over:
+            current_id = id(self.p1.piece)
+            if current_id != self.p1_piece_id:
+                self.p1_piece_id = current_id
+                self.p1_pending = self.p1_agent.get_command_sequence(
+                    self.p1.board.copy(), self.p1.piece
+                )
 
-        if self.p2_agent:
-            """TODO Agent output a command corresponding to action"""
-            command = self.p2_agent.random_move()
-            self.p2.execute(command)
+            if self.p1_pending:
+                command = self.p1_pending.pop(0)
+                print(f"P1 EXECUTE: {command}")
+                self.p1.execute(command)
+
+        if self.p2_agent and not self.p2.game_over:
+            current_id = id(self.p2.piece)
+            if current_id != self.p2_piece_id:
+                self.p2_piece_id = current_id
+                self.p2_pending = self.p2_agent.get_command_sequence(
+                    self.p2.board.copy(), self.p2.piece
+                )
+
+            if self.p2_pending:
+                command = self.p2_pending.pop(0)
+                print(f"P2 EXECUTE: {command}")
+                self.p2.execute(command)
 
     def _human_event(self):
         for event in pygame.event.get():

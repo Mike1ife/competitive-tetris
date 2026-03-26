@@ -1,8 +1,10 @@
 """TODO actual agent"""
 
 import random
-from decider import Decider
-from pathfinder import Pathfinder
+import numpy as np
+from tetris import Piece
+from models.decider import Decider
+from models.pathfinder import Pathfinder
 
 
 class Agent:
@@ -16,3 +18,8 @@ class Agent:
 
     def random_move(self):
         return random.choice(self.commands)
+
+    def get_command_sequence(self, board: np.ndarray, piece: Piece) -> list:
+        actions = self.pathfinder.get_actions(board, piece)
+        sequence = self.decider.get_sequence(actions)
+        return sequence
