@@ -240,27 +240,55 @@ class Tetris:
                 (self.x_offset + BOARD_W // 2 - message.get_width() // 2, BOARD_H // 2),
             )
 
-    """TODO Get info for reward"""
     # NOTE: I think we need to include the number of lines the opponent current have into our reward
-    # The inutition is if we can end the opponent with 1 or 2 extra garbage lines, it should
+    # The intuition is if we can end the opponent with 1 or 2 extra garbage lines, it should
     # be rewarded at maximum.
     # Also, the training agent should simulate the action itself. It's the not responsibility of Tetris.
 
-    def get_game_state():
-        """Return game state properties needed for reward calcultation"""
-        ...
-
-    def _get_bumpiness():
-        """Get bumpiness of the board"""
-        ...
-
-    def _get_height():
+    def _get_heights(self) -> np.ndarray:
         """Get the height of the board"""
-        ...
+        heights = np.zeros(COLS, dtype=int)
+        for col in range(COLS):
+            for row in range(ROWS):
+                if self.board[row][col]:
+                    heights[col] = ROWS - row
+                    break
+        return heights
 
-    def _get_holes():
+    def get_game_state(self) -> dict:
+        """Return game state properties needed for reward calculation"""
+        heights = self._get_heights()
+        return {
+            "heights": heights,
+            "aggregate_height": int(heights.sum()),
+            "bumpiness": self._get_bumpiness(heights),
+            "holes": self._get_holes(heights),
+        }
+
+
+    def _get_bumpiness(self, heights: np.ndarray = None) -> int:
+        """Get bumpiness of the board"""
+        if heights is None:
+            heights = self._get_heights()
+        bumpiness = 0
+        for col in range(COLS - 1):
+            bumpiness += abs(heights[col] - heights[col + 1])
+        return bumpiness
+
+
+    def _get_holes(self, heights: np.ndarray = None) -> int:
         """Get holes in the board"""
-        ...
+        if heights is None:
+            heights = self._get_heights()
+        holes = 0
+        for col in range(COLS):
+            if heights[col] != 0:
+                for row in range(ROWS - heights[col], ROWS):
+                    if not self.board[row][col]:
+                        holes += 1
+        return holes
 
-    """ADD MORE IF NEEDED"""
-    # ......
+
+
+    # TODO: ADD MORE IF NEEDED
+    # not for now
