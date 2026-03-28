@@ -45,7 +45,7 @@ def make_state(board: np.ndarray, lines_cleared: int, piece: Piece, opp_agg: int
             if board[row][col]:
                 heights[col] = ROWS - row
                 break
-    agg   = int(heights.sum())
+    agg = int(heights.max())
     bump  = int(sum(abs(heights[c] - heights[c + 1]) for c in range(COLS - 1)))
     holes = sum(
         1 for c in range(COLS) if heights[c]
@@ -172,15 +172,16 @@ def play_episode(p1: Tetris, p2: Tetris, agent: DQNAgent, pf: Pathfinder, max_pi
         )
 
         gs = p1.get_game_state()
+        line_rewards = {0: 0, 1: 100, 2: 300, 3: 500, 4: 800}
         reward = (
-            lines_cleared * 10
+            line_rewards.get(lines_cleared, 800)
             - gs["holes"] * 0.5
             - gs["bumpiness"] * 0.1
-            - gs["aggregate_height"] * 0.02
-            + opp_agg_after * 0.01
+            - gs["aggregate_height"] * 0.2
+            + opp_agg_after * 1.0
         )
         if p1.game_over:
-            reward = -50
+            reward = -500
         elif p2.game_over:
             reward += 20
 

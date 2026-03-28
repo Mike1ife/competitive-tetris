@@ -286,7 +286,7 @@ class Tetris:
         heights = self._get_heights()
         return {
             "heights": heights,
-            "aggregate_height": int(heights.sum()),
+            "aggregate_height": int(heights.max()),
             "bumpiness": self._get_bumpiness(heights),
             "holes": self._get_holes(heights),
         }

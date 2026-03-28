@@ -30,7 +30,7 @@ class Decider:
                 if board[row][col]:
                     heights[col] = ROWS - row
                     break
-        agg   = int(heights.sum())
+        agg = int(heights.max())
         bump  = int(sum(abs(heights[c] - heights[c + 1]) for c in range(COLS - 1)))
         holes = sum(
             1 for c in range(COLS) if heights[c]
