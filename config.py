@@ -1,7 +1,7 @@
 import pygame
 import numpy as np
 
-AGENT_SOURCE = "agent_source"
+AGENT_SOURCE = "tetris_dqn.keras"
 
 CELL_SIZE = 30  # cell size
 ROWS, COLS = 20, 10  # row cell num, col cell num

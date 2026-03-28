@@ -170,9 +170,9 @@ class Tetris:
             )
 
     def _respawn_piece(self) -> Piece:
-        """Respawn new piece once we start the game or place a piece"""
+        """Respawn a new piece once we start the game or place a piece"""
         # 7-bag system means we put all unique pieces into the bag and shuffle it
-        # each time we take one piece from the bag until it's empty
+        # each time we take one piece from the bag until it's empty,
         # then we refill and shuffle again
         if not self.bag:
             self.bag = TETROMINOS.copy()
