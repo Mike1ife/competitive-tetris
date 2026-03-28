@@ -15,7 +15,7 @@ FALL_INTERVAL = 500  # drop rate = 500 ms
 ACCELERATE_INTERVAL = 50  # accelerate rate (pressing down) = 50 ms
 MAX_GARBAGE_HOLE = 3  # maximum holes in a garbage line
 
-AGENT_CAPS = {"easy": 1000, "medium": 500, "hard": 333, "none": 0}
+AGENT_CAPS = {"easy": 1000, "medium": 500, "hard": 333, "none": 500}
 
 COLORS = {
     0: (30, 30, 30),  # Background

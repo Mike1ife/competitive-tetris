@@ -1,19 +1,48 @@
 import numpy as np
-from train import make_state
 from tensorflow import keras
+from config import ROWS, COLS, TETROMINOS
+from tetris import Piece
+
+NUM_PIECES = len(TETROMINOS)
+
 
 class Decider:
-    """Model that chooses the most optimal legal position to place the piece"""
+    """Chooses the best action using the trained DQN model"""
 
-    def __init__(self, source):
+    def __init__(self, source: str):
         self.model = keras.models.load_model(source)
 
-    def get_sequence(self, actions, piece, opp_agg) -> list:
-        states = np.array([
-            make_state(a["board_result"], a["lines_cleared"], piece, opp_agg)
-            for a in actions
-        ])
+    def get_sequence(self, actions: list) -> list:
+        if not actions:
+            return []
 
+        states = np.array([self._make_state(a) for a in actions])
         qs = self.model.predict(states, verbose=0).flatten()
-
         return actions[int(np.argmax(qs))]["sequence"]
+
+    def _make_state(self, action: dict) -> np.ndarray:
+        board = action["board_result"]
+        lines_cleared = action["lines_cleared"]
+        piece = action["shape"]
+
+        heights = np.zeros(COLS, dtype=int)
+        for col in range(COLS):
+            for row in range(ROWS):
+                if board[row][col]:
+                    heights[col] = ROWS - row
+                    break
+        agg   = int(heights.sum())
+        bump  = int(sum(abs(heights[c] - heights[c + 1]) for c in range(COLS - 1)))
+        holes = sum(
+            1 for c in range(COLS) if heights[c]
+            for r in range(ROWS - heights[c], ROWS)
+            if not board[r][c]
+        )
+        own = np.array([agg, holes, bump, lines_cleared], dtype=np.float32)
+
+        # piece one-hot from shape — match color_id via shape comparison
+        piece_oh = np.zeros(NUM_PIECES, dtype=np.float32)
+        piece_oh[action.get("color_id", 0)] = 1.0
+
+        # no opponent info available at inference time, use 0
+        return np.concatenate([own, piece_oh, [0.0]])

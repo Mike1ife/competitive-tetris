@@ -44,6 +44,7 @@ class Game:
         self.p2_piece_id = None
         self._p1_last_piece_time = 0
         self._p2_last_piece_time = 0
+        self._game_ended = False
 
     def _load_agent(self, source: str, commands: list):
         if not source:
@@ -64,6 +65,23 @@ class Game:
             self.p1.render(self.screen, self.font_lg)
             self.p2.render(self.screen, self.font_lg)
             pygame.display.flip()
+
+            if self._game_ended:
+                continue
+
+            if self.p1.game_over and self.p2.game_over:
+                winner = "Draw"
+            elif self.p1.game_over:
+                winner = "P2 wins"
+            elif self.p2.game_over:
+                winner = "P1 wins"
+            else:
+                continue
+
+            print(f"{winner}  p1_score={self.p1.score}  p2_score={self.p2.score}")
+            self._game_ended = True
+            pygame.time.wait(3000)
+            break
 
     def _agent_event(self):
         now = pygame.time.get_ticks()
