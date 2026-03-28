@@ -90,3 +90,5 @@ P2_COMMANDS = {
     "rotate": (pygame.K_UP, "u"),
     "drop": (pygame.K_KP_0, "0"),
 }
+
+SCORE_TABLE = {0: 0, 1: 100, 2: 300, 3: 500, 4: 800}

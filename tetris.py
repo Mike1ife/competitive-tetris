@@ -14,6 +14,7 @@ from config import (
     BOARD_H,
     BOARD_W,
     MAX_GARBAGE_HOLE,
+    SCORE_TABLE,
 )
 
 
@@ -25,6 +26,13 @@ class Piece:
         self.row = 0
         self.col = COLS // 2 - shape.shape[1] // 2
         self.rotation_id = 0
+
+    def copy(self):
+        p = Piece(self.shape, self.color_id)
+        p.row = self.row
+        p.col = self.col
+        p.rotation_id = self.rotation_id
+        return p
 
 
 class Tetris:
@@ -253,7 +261,8 @@ class Tetris:
                 if 8 in self.cell_colors[row]:
                     garbage_line_count += 1
 
-        self.score += len(complete_lines) - garbage_line_count
+        line_cleared = len(complete_lines) - garbage_line_count
+        self.score += SCORE_TABLE.get(line_cleared, 800)
         # Re-fill the board by placing empty lines on top of remaining rows
         remaining_lines = [row for row in range(ROWS) if row not in complete_lines]
         empty_lines = np.zeros((len(complete_lines), COLS), dtype=int)
@@ -264,7 +273,7 @@ class Tetris:
             (empty_lines.copy(), self.cell_colors[remaining_lines])
         )
 
-        return len(complete_lines) - garbage_line_count, new_board, new_cell_colors
+        return line_cleared, new_board, new_cell_colors
 
     # NOTE: I think we need to include the number of lines the opponent current have into our reward
     # The intuition is if we can end the opponent with 1 or 2 extra garbage lines, it should
