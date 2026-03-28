@@ -22,7 +22,7 @@ class Pathfinder:
 
         _, cols = board.shape
 
-        # Simply move horizontally and rotate some times
+        # Simply move horizontally and rotate sometimes
         # then hard drop
         for rotation_id, shape in enumerate(rotations):
             for col in range(cols):
@@ -30,8 +30,13 @@ class Pathfinder:
                 if dropped_row is None:
                     continue
 
+<<<<<<< HEAD
                 board_placed = self._place(board, shape, dropped_row, col)
                 lines_cleared, board_result = self._clear_lines(board_placed)
+=======
+                board_result = self._place(board, shape, dropped_row, col)
+                board_result = self._clear_lines(board_result)
+>>>>>>> ec10eeffb7ebf0bd60a74ad09600bfc7d1544ea0
 
                 sequence = self._build_sequence(
                     piece, current_rotation_id, rotation_id, col
