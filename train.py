@@ -5,8 +5,8 @@ import pygame
 import random
 from collections import deque
 from tensorflow import keras
-from config import ROWS, COLS
-from tetris import Tetris
+from config import ROWS, COLS, TETROMINOS
+from tetris import Tetris, Piece
 from models.pathfinder import Pathfinder
 
 AGENT_COMMANDS = {
@@ -18,7 +18,8 @@ OPP_COMMANDS = {
     "rotate": (0, "u"), "drop": (0, "0"),
 }
 
-STATE_SIZE      = 4
+NUM_PIECES      = len(TETROMINOS)       # 7
+STATE_SIZE      = 4 + NUM_PIECES + 1    # board features + piece one-hot + opp height
 MEM_SIZE        = 20000
 BATCH_SIZE      = 64
 DISCOUNT        = 0.95
@@ -28,10 +29,17 @@ EPSILON_MIN     = 0.05
 EPSILON_STOP_EP = 5000
 REPLAY_START    = 1000
 TRAIN_EPISODES  = 5000
+TARGET_UPDATE   = 200
 SAVE_PATH       = "tetris_dqn.keras"
 
 
-def board_features(board: np.ndarray) -> np.ndarray:
+def make_state(board: np.ndarray, lines_cleared: int, piece: Piece, opp_agg: int) -> np.ndarray:
+    """Build state vector from post-action board features.
+
+    Used identically in best_action (to score candidates) and in replay
+    (as the training input), so the model trains on the same distribution
+    it infers on.
+    """
     heights = np.zeros(COLS, dtype=int)
     for col in range(COLS):
         for row in range(ROWS):
@@ -39,14 +47,25 @@ def board_features(board: np.ndarray) -> np.ndarray:
                 heights[col] = ROWS - row
                 break
     agg   = int(heights.sum())
-    bump  = int(sum(abs(heights[c] - heights[c+1]) for c in range(COLS-1)))
+    bump  = int(sum(abs(heights[c] - heights[c + 1]) for c in range(COLS - 1)))
     holes = sum(
-        1 for col in range(COLS) if heights[col]
-        for row in range(ROWS - heights[col], ROWS)
-        if not board[row][col]
+        1 for c in range(COLS) if heights[c]
+        for r in range(ROWS - heights[c], ROWS)
+        if not board[r][c]
     )
-    lines = int(np.all(board, axis=1).sum())
-    return np.array([lines, holes, bump, agg], dtype=np.float32)
+    own = np.array([agg, holes, bump, lines_cleared], dtype=np.float32)
+    piece_oh = np.zeros(NUM_PIECES, dtype=np.float32)
+    piece_oh[piece.color_id - 1] = 1.0
+    return np.concatenate([own, piece_oh, [opp_agg]])
+
+
+def copy_piece(piece: Piece) -> Piece:
+    """Snapshot a Piece so later mutations don't corrupt replay memory."""
+    p = Piece(piece.shape, piece.color_id)
+    p.row = piece.row
+    p.col = piece.col
+    p.rotation_id = piece.rotation_id
+    return p
 
 
 def build_model():
@@ -54,6 +73,7 @@ def build_model():
         keras.Input(shape=(STATE_SIZE,)),
         keras.layers.Dense(64, activation="relu"),
         keras.layers.Dense(64, activation="relu"),
+        keras.layers.Dense(32, activation="relu"),
         keras.layers.Dense(1, activation="linear"),
     ])
     model.compile(loss="mse", optimizer=keras.optimizers.Adam(learning_rate=1e-3))
@@ -70,38 +90,45 @@ class DQNAgent:
         self._decay        = (EPSILON_START - EPSILON_MIN) / EPSILON_STOP_EP
         self.update_counter = 0
 
-    def best_action(self, actions):
+    def best_action(self, actions, piece, opp_agg):
         if random.random() < self.epsilon:
             return random.choice(actions)
-        states = np.array([board_features(a["board_result"]) for a in actions])
+        states = np.array([
+            make_state(a["board_result"], a["lines_cleared"], piece, opp_agg)
+            for a in actions
+        ])
         qs = self.model.predict(states, verbose=0).flatten()
         return actions[int(np.argmax(qs))]
 
-    def remember(self, state, next_board, next_piece, reward, done):
-        self.memory.append((state, next_board, next_piece, reward, done))
+    # memory tuple: (action_state, reward, done, next_board, next_piece, opp_agg)
+    def remember(self, action_state, reward, done, next_board, next_piece, opp_agg):
+        self.memory.append((action_state, reward, done, next_board, next_piece, opp_agg))
 
     def train(self, pf: Pathfinder):
         if len(self.memory) < REPLAY_START:
             return
         batch = random.sample(self.memory, min(BATCH_SIZE, len(self.memory)))
         x, y = [], []
-        for state, next_board, next_piece, reward, done in batch:
+        for action_state, reward, done, next_board, next_piece, opp_agg in batch:
             if done:
                 target = reward
             else:
-                next_actions = pf.get_actions(next_board.copy(), next_piece)
+                next_actions = pf.get_actions(next_board, next_piece)
                 if not next_actions:
-                    max_next_q = 0
+                    target = reward
                 else:
-                    next_states = np.array([board_features(a["board_result"]) for a in next_actions])
-                    next_qs = self.target_model.predict(next_states, verbose=0).flatten()
-                    max_next_q = np.max(next_qs)
-                target = reward + DISCOUNT * max_next_q
-            x.append(state)
+                    next_states = np.array([
+                        make_state(a["board_result"], a["lines_cleared"], next_piece, opp_agg)
+                        for a in next_actions
+                    ])
+                    target = reward + DISCOUNT * np.max(
+                        self.target_model.predict(next_states, verbose=0).flatten()
+                    )
+            x.append(action_state)
             y.append(target)
         self.model.fit(np.array(x), np.array(y), batch_size=len(x), epochs=EPOCHS, verbose=0)
         self.update_counter += 1
-        if self.update_counter % 200 == 0:
+        if self.update_counter % TARGET_UPDATE == 0:
             self.target_model.set_weights(self.model.get_weights())
 
     def decay_epsilon(self):
@@ -109,51 +136,60 @@ class DQNAgent:
 
     def save(self):
         self.model.save(SAVE_PATH)
-        print(f"Model saved to {SAVE_PATH}")
+        print(f"Saved → {SAVE_PATH}")
 
 
-def play_episode(p1: Tetris, p2: Tetris, agent: DQNAgent, pf: Pathfinder):
+def play_episode(p1: Tetris, p2: Tetris, agent: DQNAgent, pf: Pathfinder, max_pieces: int = 500):
     total_reward = 0
-    while not p1.game_over and not p2.game_over:
+    pieces = 0
+    while not p1.game_over and not p2.game_over and pieces < max_pieces:
+        pieces += 1
         actions = pf.get_actions(p1.board.copy(), p1.piece)
         if not actions:
             break
-        state  = board_features(p1.board.copy())
-        chosen = agent.best_action(actions)
+
+        opp_agg      = p2.get_game_state()["aggregate_height"]
+        score_before = p1.score
+        chosen       = agent.best_action(actions, p1.piece, opp_agg)
+
         for cmd in chosen["sequence"]:
-            if cmd != "drop":
-                p1.execute(cmd)
-        piece = p1.piece
-        for _ in range(ROWS):
-            if not p1._can_move_to(piece.shape, piece.row + 1, piece.col):
-                break
-            piece.row += 1
-        p1._place()
+            p1.execute(cmd)
         pygame.event.clear()
 
+        # random opponent step
         opp_acts = pf.get_actions(p2.board.copy(), p2.piece)
         if opp_acts:
-            opp = random.choice(opp_acts)
-            for cmd in opp["sequence"]:
-                if cmd != "drop":
-                    p2.execute(cmd)
-            piece = p2.piece
-            for _ in range(ROWS):
-                if not p2._can_move_to(piece.shape, piece.row + 1, piece.col):
-                    break
-                piece.row += 1
-            p2._place()
+            for cmd in random.choice(opp_acts)["sequence"]:
+                p2.execute(cmd)
             pygame.event.clear()
 
-        next_board = p1.board.copy()
-        lines, holes, bump, height = board_features(next_board)
-        reward = lines * 10 - holes * 0.5 - bump * 0.1 - height * 0.02
+        lines_cleared = p1.score - score_before
+        opp_agg_after = p2.get_game_state()["aggregate_height"]
+
+        # build action_state from the simulated post-placement board
+        # this matches exactly what best_action scored during selection
+        action_state = make_state(
+            chosen["board_result"], lines_cleared, p1.piece, opp_agg_after
+        )
+
+        gs = p1.get_game_state()
+        reward = (
+            lines_cleared * 10
+            - gs["holes"] * 0.5
+            - gs["bumpiness"] * 0.1
+            - gs["aggregate_height"] * 0.02
+            + opp_agg_after * 0.01
+        )
         if p1.game_over:
             reward = -50
         elif p2.game_over:
             reward += 20
+
         done = p1.game_over or p2.game_over
-        agent.remember(state, next_board, p1.piece, reward, done)
+        agent.remember(
+            action_state, reward, done,
+            p1.board.copy(), copy_piece(p1.piece), opp_agg_after,
+        )
         total_reward += reward
 
     return total_reward

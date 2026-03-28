@@ -106,6 +106,7 @@ class Tetris:
         elif command == "drop":
             while self._can_move_to(piece.shape, piece.row + 1, piece.col):
                 piece.row += 1
+            self._place()
 
     def update(self, delta: int):
         """Updating board with auto drop"""

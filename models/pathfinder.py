@@ -1,6 +1,5 @@
 import numpy as np
 from tetris import Piece
-from collections import deque
 
 
 class Pathfinder:
@@ -28,11 +27,11 @@ class Pathfinder:
         for rotation_id, shape in enumerate(rotations):
             for col in range(cols):
                 dropped_row = self._drop(board, shape, piece.row, col)
-                if not dropped_row:
+                if dropped_row is None:
                     continue
 
-                board_result = self._place(board, shape, dropped_row, col)
-                board_result = self._clear_lines(board)
+                board_placed = self._place(board, shape, dropped_row, col)
+                lines_cleared, board_result = self._clear_lines(board_placed)
 
                 sequence = self._build_sequence(
                     piece, current_rotation_id, rotation_id, col
@@ -43,6 +42,7 @@ class Pathfinder:
                         "col": col,
                         "shape": shape,
                         "sequence": sequence,
+                        "lines_cleared": lines_cleared,
                         "board_result": board_result,
                     }
                 )
@@ -59,7 +59,7 @@ class Pathfinder:
 
     def _get_rotation_id(self, shape: np.ndarray, rotations: list) -> int:
         for i, rotation in enumerate(rotations):
-            if np.array_equal(shape, rotation):
+            if shape.shape == rotation.shape and np.array_equal(shape, rotation):
                 return i
         return 0
 
@@ -95,14 +95,14 @@ class Pathfinder:
 
         return row
 
-    def _clear_lines(self, board: np.ndarray):
+    def _clear_lines(self, board: np.ndarray) -> tuple[int, np.ndarray]:
         rows, cols = board.shape
         remain = [row for row in range(rows) if not np.all(board[row])]
         clear_count = rows - len(remain)
         if clear_count == 0:
-            return board
+            return 0, board
         empty = np.zeros((clear_count, cols), dtype=int)
-        return np.vstack([empty, board[remain]])
+        return clear_count, np.vstack([empty, board[remain]])
 
     def _build_sequence(
         self,
