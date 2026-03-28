@@ -25,7 +25,6 @@ class Game:
         font_sm = pygame.font.SysFont("monospace", 16)
         options = run_home(self.screen, self.clock, self.font_lg, font_sm)
 
-        """TODO wait cap time before taking action"""
         self.agent_cap = AGENT_CAPS[options["difficulty"]]
 
         self.p1_agent = self._load_agent(
@@ -39,29 +38,27 @@ class Game:
         self.p1.opponent = self.p2
         self.p2.opponent = self.p1
 
-        # pending commands
         self.p1_pending = []
         self.p2_pending = []
-        # current handling piece id
         self.p1_piece_id = None
         self.p2_piece_id = None
+        self._p1_last_piece_time = 0
+        self._p2_last_piece_time = 0
 
     def _load_agent(self, source: str, commands: list):
         if not source:
             return None
-
-        """TODO load actually agent"""
         return Agent(source, commands)
 
     def run(self):
         while True:
-            delta = self.clock.tick(FPS)
+            self.clock.tick(FPS)
 
             self._agent_event()
             self._human_event()
 
-            self.p1.update(delta)
-            self.p2.update(delta)
+            self.p1.update(self.clock.get_time())
+            self.p2.update(self.clock.get_time())
 
             self.screen.fill((10, 10, 10))
             self.p1.render(self.screen, self.font_lg)
@@ -69,31 +66,31 @@ class Game:
             pygame.display.flip()
 
     def _agent_event(self):
+        now = pygame.time.get_ticks()
+
         if self.p1_agent and not self.p1.game_over:
             current_id = id(self.p1.piece)
-            if current_id != self.p1_piece_id:
+            if current_id != self.p1_piece_id and (now - self._p1_last_piece_time >= self.agent_cap):
                 self.p1_piece_id = current_id
                 self.p1_pending = self.p1_agent.get_command_sequence(
                     self.p1.board.copy(), self.p1.piece, self.p2.get_game_state()["aggregate_height"]
                 )
-
-            if self.p1_pending:
-                command = self.p1_pending.pop(0)
-                print(f"P1 EXECUTE: {command}")
-                self.p1.execute(command)
+                self._p1_last_piece_time = now
+                for cmd in self.p1_pending:
+                    self.p1.execute(cmd)
+                self.p1_pending = []
 
         if self.p2_agent and not self.p2.game_over:
             current_id = id(self.p2.piece)
-            if current_id != self.p2_piece_id:
+            if current_id != self.p2_piece_id and (now - self._p2_last_piece_time >= self.agent_cap):
                 self.p2_piece_id = current_id
                 self.p2_pending = self.p2_agent.get_command_sequence(
                     self.p2.board.copy(), self.p2.piece, self.p1.get_game_state()["aggregate_height"]
                 )
-
-            if self.p2_pending:
-                command = self.p2_pending.pop(0)
-                print(f"P2 EXECUTE: {command}")
-                self.p2.execute(command)
+                self._p2_last_piece_time = now
+                for cmd in self.p2_pending:
+                    self.p2.execute(cmd)
+                self.p2_pending = []
 
     def _human_event(self):
         for event in pygame.event.get():
