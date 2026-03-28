@@ -74,7 +74,7 @@ class Game:
             if current_id != self.p1_piece_id:
                 self.p1_piece_id = current_id
                 self.p1_pending = self.p1_agent.get_command_sequence(
-                    self.p1.board.copy(), self.p1.piece
+                    self.p1.board.copy(), self.p1.piece, self.p2.get_game_state()["aggregate_height"]
                 )
 
             if self.p1_pending:
@@ -87,7 +87,7 @@ class Game:
             if current_id != self.p2_piece_id:
                 self.p2_piece_id = current_id
                 self.p2_pending = self.p2_agent.get_command_sequence(
-                    self.p2.board.copy(), self.p2.piece
+                    self.p2.board.copy(), self.p2.piece, self.p1.get_game_state()["aggregate_height"]
                 )
 
             if self.p2_pending:

@@ -1,5 +1,4 @@
 """Train agent, outputs a saved model file"""
-
 import numpy as np
 import pygame
 import random
@@ -34,7 +33,7 @@ SAVE_PATH       = "tetris_dqn.keras"
 
 
 def make_state(board: np.ndarray, lines_cleared: int, piece: Piece, opp_agg: int) -> np.ndarray:
-    """Build state vector from post-action board features.
+    """Build a state vector from post-action board features.
 
     Used identically in best_action (to score candidates) and in replay
     (as the training input), so the model trains on the same distribution
