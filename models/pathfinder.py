@@ -44,6 +44,7 @@ class Pathfinder:
                         "sequence": sequence,
                         "lines_cleared": lines_cleared,
                         "board_result": board_result,
+                        "color_id": piece.color_id - 1,  # 0-indexed for one-hot
                     }
                 )
 

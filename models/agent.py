@@ -11,6 +11,6 @@ class Agent:
         self.decider = Decider(source)
         self.pathfinder = Pathfinder()
 
-    def get_command_sequence(self, board: np.ndarray, piece: Piece, opp_agg: int) -> list:
+    def get_command_sequence(self, board, piece, opp_agg):
         actions = self.pathfinder.get_actions(board, piece)
-        return self.decider.get_sequence(actions)
+        return self.decider.get_sequence(actions, opp_agg)
