@@ -5,7 +5,7 @@ import pygame
 import random
 from collections import deque
 from tensorflow import keras
-from config import ROWS, COLS, TETROMINOS, SCORE_TABLE
+from config import ROWS, COLS, TETROMINOS
 from tetris import Tetris, Piece
 from models.pathfinder import Pathfinder
 
@@ -67,6 +67,15 @@ def make_state(
     piece_oh = np.zeros(NUM_PIECES, dtype=np.float32)
     piece_oh[piece.color_id - 1] = 1.0
     return np.concatenate([own, piece_oh, [opp_agg]])
+
+
+def copy_piece(piece: Piece) -> Piece:
+    """Snapshot a Piece so later mutations don't corrupt replay memory."""
+    p = Piece(piece.shape, piece.color_id)
+    p.row = piece.row
+    p.col = piece.col
+    p.rotation_id = piece.rotation_id
+    return p
 
 
 def build_model():
@@ -156,7 +165,7 @@ class DQNAgent:
 
 
 def play_episode(
-    p1: Tetris, p2: Tetris, agent: DQNAgent, pf: Pathfinder, max_pieces: int = 500
+    p1: Tetris, p2: Tetris, agent: DQNAgent, pf: Pathfinder, max_pieces: int = 2000
 ):
     total_reward = 0
     pieces = 0
@@ -168,6 +177,7 @@ def play_episode(
 
         opp_agg = p2.get_game_state()["aggregate_height"]
         score_before = p1.score
+        total_before = p1.total_lines_cleared
         chosen = agent.best_action(actions, p1.piece, opp_agg)
 
         for cmd in chosen["sequence"]:
@@ -181,19 +191,21 @@ def play_episode(
                 p2.execute(cmd)
             pygame.event.clear()
 
-        lines_cleared = p1.score - score_before
+        normal_cleared = p1.score - score_before
+        garbage_cleared = (p1.total_lines_cleared - total_before) - normal_cleared
         opp_agg_after = p2.get_game_state()["aggregate_height"]
 
         # build action_state from the simulated post-placement board
         # this matches exactly what best_action scored during selection
         action_state = make_state(
-            chosen["board_result"], lines_cleared, p1.piece, opp_agg_after
+            chosen["board_result"], normal_cleared, p1.piece, opp_agg_after
         )
 
         gs = p1.get_game_state()
-
+        line_rewards = {0: 0, 1: 100, 2: 300, 3: 500, 4: 800}
         reward = (
-            SCORE_TABLE.get(lines_cleared, 800)
+            line_rewards.get(normal_cleared, 800)
+            + garbage_cleared * 50
             - gs["holes"] * 0.5
             - gs["bumpiness"] * 0.1
             - gs["aggregate_height"] * 0.2
@@ -210,7 +222,7 @@ def play_episode(
             reward,
             done,
             p1.board.copy(),
-            p1.piece.copy(),
+            copy_piece(p1.piece),
             opp_agg_after,
         )
         total_reward += reward
