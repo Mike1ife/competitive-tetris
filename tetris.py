@@ -48,8 +48,9 @@ class Tetris:
         self.opponent: Tetris = None  # Also a Tetris object
         self.game_over = False
         self.score = 0
+        self.normal_lines_cleared = 0
+        self.garbage_lines_cleared = 0
         self._fall_timer = 0
-        self.total_lines_cleared = 0
         self.accelerate = False
 
     def respawn_garbage_lines(self, count: int):
@@ -261,9 +262,9 @@ class Tetris:
                 if 8 in self.cell_colors[row]:
                     garbage_line_count += 1
 
-        self.total_lines_cleared += len(complete_lines)
-        self.total_lines_cleared += len(complete_lines)
         line_cleared = len(complete_lines) - garbage_line_count
+        self.normal_lines_cleared += line_cleared
+        self.garbage_lines_cleared += garbage_line_count
         self.score += SCORE_TABLE.get(line_cleared, 800)
 
         # Re-fill the board by placing empty lines on top of remaining rows

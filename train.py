@@ -88,7 +88,7 @@ def build_model():
             keras.layers.Dense(1, activation="linear"),
         ]
     )
-    model.compile(loss="mse", optimizer=keras.optimizers.Adam(learning_rate=1e-3))
+    model.compile(loss="huber", optimizer=keras.optimizers.Adam(learning_rate=1e-3))
     return model
 
 
@@ -176,8 +176,8 @@ def play_episode(
             break
 
         opp_agg = p2.get_game_state()["aggregate_height"]
-        score_before = p1.score
-        total_before = p1.total_lines_cleared
+        total_before = p1.normal_lines_cleared
+        garbage_before = p1.garbage_lines_cleared
         chosen = agent.best_action(actions, p1.piece, opp_agg)
 
         for cmd in chosen["sequence"]:
@@ -191,8 +191,8 @@ def play_episode(
                 p2.execute(cmd)
             pygame.event.clear()
 
-        normal_cleared = p1.score - score_before
-        garbage_cleared = (p1.total_lines_cleared - total_before) - normal_cleared
+        normal_cleared = p1.normal_lines_cleared - total_before
+        garbage_cleared = p1.garbage_lines_cleared - garbage_before
         opp_agg_after = p2.get_game_state()["aggregate_height"]
 
         # build action_state from the simulated post-placement board
