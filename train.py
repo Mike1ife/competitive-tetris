@@ -3,6 +3,7 @@
 import numpy as np
 import pygame
 import random
+import matplotlib.pyplot as plt
 from collections import deque
 from tensorflow import keras
 from config import ROWS, COLS, TETROMINOS
@@ -239,6 +240,8 @@ def train():
     agent = DQNAgent()
     best_score = -np.inf
 
+    rewards = []
+    epsilons = []
     for ep in range(1, TRAIN_EPISODES + 1):
         p1 = Tetris(x_offset=0, commands=AGENT_COMMANDS)
         p2 = Tetris(x_offset=0, commands=OPP_COMMANDS)
@@ -246,6 +249,10 @@ def train():
         p2.opponent = p1
 
         total_reward = play_episode(p1, p2, agent, pf)
+
+        rewards.append(total_reward)
+        epsilons.append(agent.epsilon)
+
         agent.train(pf)
         agent.decay_epsilon()
 
@@ -257,8 +264,37 @@ def train():
             print(
                 f"ep={ep:4d}  reward={total_reward:7.1f}  eps={agent.epsilon:.3f}  best={best_score:.1f}"
             )
+        if ep % 200 == 0:
+            draw_figure(rewards, epsilons)
 
     print("Training complete.")
+
+
+def draw_figure(rewards, epsilons):
+    window = 50
+    episodes = np.arange(1, len(rewards) + 1)
+
+    fig, ax = plt.subplots()
+    ax.plot(episodes, rewards, alpha=0.3, label="Raw")
+
+    if len(rewards) >= window:
+        rolling_avg = np.convolve(rewards, np.ones(window) / window, mode="valid")
+        ax.plot(
+            episodes[window - 1 :],
+            rolling_avg,
+            label=f"Rolling average (n={window})",
+        )
+
+    ax.set(xlabel="Episode", ylabel="Reward", title="DQN rewards")
+    ax.legend()
+    fig.savefig("rewards.png")
+    plt.close(fig)
+
+    fig, ax = plt.subplots()
+    ax.plot(episodes, epsilons)
+    ax.set(xlabel="Episode", ylabel="Epsilon", title="DQN epsilons")
+    fig.savefig("epsilons.png")
+    plt.close(fig)
 
 
 if __name__ == "__main__":
