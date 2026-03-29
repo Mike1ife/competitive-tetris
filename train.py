@@ -35,7 +35,7 @@ EPSILON_START = 1.0
 EPSILON_MIN = 0.05
 EPSILON_STOP_EP = 5000
 REPLAY_START = 1000
-TRAIN_EPISODES = 5000
+TRAIN_EPISODES = 20000
 TARGET_UPDATE = 200
 SAVE_PATH = "tetris_dqn.keras"
 
@@ -247,6 +247,7 @@ def train():
         p2 = Tetris(x_offset=0, commands=OPP_COMMANDS)
         p1.opponent = p2
         p2.opponent = p1
+        p1.respawn_garbage_lines(random.randint(0, 8))
 
         total_reward = play_episode(p1, p2, agent, pf)
 

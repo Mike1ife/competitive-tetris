@@ -55,6 +55,9 @@ class Tetris:
 
     def respawn_garbage_lines(self, count: int):
         """Respawn garbage lines"""
+        if count == 0:
+            return
+        
         garbage_lines = []
         for _ in range(count):
             row = np.ones(COLS, dtype=int)
