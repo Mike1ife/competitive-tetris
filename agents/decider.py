@@ -10,7 +10,7 @@ class Decider:
     """Chooses the best action using the trained DQN model"""
 
     def __init__(self, source: str):
-        self.model = keras.models.load_model(source)
+        self.model = keras.models.load_model(f"./models/{source}")
 
     def get_sequence(self, actions: list, piece: Piece, opp_agg: int = 0) -> list:
         if not actions:
@@ -31,9 +31,11 @@ class Decider:
                     heights[col] = ROWS - row
                     break
         agg = int(heights.max())
-        bump  = int(sum(abs(heights[c] - heights[c + 1]) for c in range(COLS - 1)))
+        bump = int(sum(abs(heights[c] - heights[c + 1]) for c in range(COLS - 1)))
         holes = sum(
-            1 for c in range(COLS) if heights[c]
+            1
+            for c in range(COLS)
+            if heights[c]
             for r in range(ROWS - heights[c], ROWS)
             if not board[r][c]
         )

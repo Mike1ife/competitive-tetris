@@ -8,7 +8,8 @@ from collections import deque
 from tensorflow import keras
 from config import ROWS, COLS, TETROMINOS
 from tetris import Tetris, Piece
-from models.pathfinder import Pathfinder
+from agents.pathfinder import Pathfinder
+from agents.strategy import Strategy
 
 AGENT_COMMANDS = {
     "left": (0, "a"),
@@ -37,7 +38,7 @@ EPSILON_STOP_EP = 2000
 REPLAY_START = 1000
 TRAIN_EPISODES = 5000
 TARGET_UPDATE = 200
-SAVE_PATH = "tetris_dqn.keras"
+SAVE_PATH = "./models/tetris_dqn.keras"
 
 
 def make_state(
@@ -70,15 +71,6 @@ def make_state(
     return np.concatenate([own, piece_oh, [opp_agg]])
 
 
-def copy_piece(piece: Piece) -> Piece:
-    """Snapshot a Piece so later mutations don't corrupt replay memory."""
-    p = Piece(piece.shape, piece.color_id)
-    p.row = piece.row
-    p.col = piece.col
-    p.rotation_id = piece.rotation_id
-    return p
-
-
 def build_model():
     model = keras.Sequential(
         [
@@ -89,7 +81,9 @@ def build_model():
             keras.layers.Dense(1, activation="linear"),
         ]
     )
-    model.compile(loss="huber", optimizer=keras.optimizers.Adam(learning_rate=1e-3))
+    model.compile(
+        loss=keras.losses.Huber, optimizer=keras.optimizers.Adam(learning_rate=1e-3)
+    )
     return model
 
 
@@ -165,35 +159,13 @@ class DQNAgent:
         print(f"Saved → {SAVE_PATH}")
 
 
-def heuristic_score(action):
-    b = action["board_result"]
-    heights = [
-        next((ROWS - r for r in range(ROWS) if b[r][c]), 0) for c in range(COLS)
-    ]
-    max_h = max(heights)
-    agg_h = sum(heights)
-    holes = sum(
-        1
-        for c in range(COLS)
-        for r in range(ROWS - heights[c], ROWS)
-        if not b[r][c]
-    )
-    bump = sum(abs(heights[c] - heights[c + 1]) for c in range(COLS - 1))
-
-    lines = action["lines_cleared"]
-    line_score = {0: 0, 1: 150, 2: 400, 3: 800, 4: 1600}.get(lines, 1600)
-
-    return (
-        line_score
-        - holes * 3.0
-        - max_h * 0.5
-        - agg_h * 0.1
-        - bump * 0.2
-    )
-
-
 def play_episode(
-    p1: Tetris, p2: Tetris, agent: DQNAgent, pf: Pathfinder, max_pieces: int = 1000
+    p1: Tetris,
+    p2: Tetris,
+    agent: DQNAgent,
+    pf: Pathfinder,
+    strategy: Strategy,
+    max_pieces: int = 1000,
 ):
     total_reward = 0
     pieces = 0
@@ -216,7 +188,7 @@ def play_episode(
         # heuristic opponent step
         opp_acts = pf.get_actions(p2.board.copy(), p2.piece)
         if opp_acts:
-            for cmd in max(opp_acts, key=heuristic_score)["sequence"]:
+            for cmd in max(opp_acts, key=strategy.get_heuristic)["sequence"]:
                 p2.execute(cmd)
             pygame.event.clear()
 
@@ -224,23 +196,18 @@ def play_episode(
         garbage_cleared = p1.garbage_lines_cleared - garbage_before
         opp_agg_after = p2.get_game_state()["aggregate_height"]
 
-        # build action_state from the simulated post-placement board
-        # this matches exactly what best_action scored during selection
-        action_state = make_state(
-            chosen["board_result"], normal_cleared, p1.piece, opp_agg_after
-        )
-
         gs = p1.get_game_state()
         height_delta = gs["aggregate_height"] - prev_height
-        line_rewards = {0: 0, 1: 100, 2: 300, 3: 600, 4: 1200}
-        reward = (
-            line_rewards.get(normal_cleared, 1200)
-            + garbage_cleared * 100
-            - gs["holes"] * 0.75
-            - gs["bumpiness"] * 0.15
-            - max(height_delta, 0) * 0.5
-            + min(height_delta, 0) * 0.3
+
+        reward = strategy.get_reward(
+            "neutral",
+            normal_cleared,
+            garbage_cleared,
+            gs["holes"],
+            gs["bumpiness"],
+            height_delta,
         )
+
         if p1.game_over:
             reward = -1000
         elif p2.game_over:
@@ -249,12 +216,18 @@ def play_episode(
         prev_height = gs["aggregate_height"]
 
         done = p1.game_over or p2.game_over
+
+        # build action_state from the simulated post-placement board
+        # this matches exactly what best_action scored during selection
+        action_state = make_state(
+            chosen["board_result"], normal_cleared, p1.piece, opp_agg_after
+        )
         agent.remember(
             action_state,
             reward,
             done,
             p1.board.copy(),
-            copy_piece(p1.piece),
+            p1.piece.copy(),
             opp_agg_after,
         )
         total_reward += reward
@@ -269,10 +242,11 @@ def train():
 
     pf = Pathfinder()
     agent = DQNAgent()
+    strategy = Strategy()
+
     best_score = -np.inf
 
     rewards = []
-    epsilons = []
     high_rewards = []
     for ep in range(1, TRAIN_EPISODES + 1):
         p1 = Tetris(x_offset=0, commands=AGENT_COMMANDS)
@@ -282,10 +256,10 @@ def train():
         garbage = random.randint(0, 14)
         p1.respawn_garbage_lines(garbage)
 
-        total_reward = play_episode(p1, p2, agent, pf)
+        total_reward = play_episode(p1, p2, agent, pf, strategy)
 
         rewards.append(total_reward)
-        epsilons.append(agent.epsilon)
+
         if garbage >= 12:
             high_rewards.append(total_reward)
 
@@ -303,12 +277,12 @@ def train():
                 f"best={best_score:.1f}  high_avg={high_avg:.1f}"
             )
         if ep % 200 == 0:
-            draw_figure(rewards, epsilons)
+            draw_figure(rewards)
 
     print("Training complete.")
 
 
-def draw_figure(rewards, epsilons):
+def draw_figure(rewards):
     window = 50
     episodes = np.arange(1, len(rewards) + 1)
 
@@ -325,13 +299,7 @@ def draw_figure(rewards, epsilons):
 
     ax.set(xlabel="Episode", ylabel="Reward", title="DQN rewards")
     ax.legend()
-    fig.savefig("rewards.png")
-    plt.close(fig)
-
-    fig, ax = plt.subplots()
-    ax.plot(episodes, epsilons)
-    ax.set(xlabel="Episode", ylabel="Epsilon", title="DQN epsilons")
-    fig.savefig("epsilons.png")
+    fig.savefig("/res/rewards.png")
     plt.close(fig)
 
 

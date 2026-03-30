@@ -1,8 +1,8 @@
 import pygame
 import numpy as np
 
-AGENT_SOURCE = "tetris_dqn.keras"
-AGENT_SOURCE_2 = "tetris_dqn_v3.keras"
+AGENT1_SOURCE = "tetris_dqn_v4.keras"
+AGENT2_SOURCE = "tetris_dqn_v4.keras"
 
 CELL_SIZE = 30  # cell size
 ROWS, COLS = 20, 10  # row cell num, col cell num
@@ -17,7 +17,7 @@ FALL_INTERVAL = 500  # drop rate = 500 ms
 ACCELERATE_INTERVAL = 50  # accelerate rate (pressing down) = 50 ms
 MAX_GARBAGE_HOLE = 3  # maximum holes in a garbage line
 
-AGENT_CAPS = {"easy": 1000, "medium": 500, "hard": 333, "none": 1000}
+AGENT_CAPS = {"easy": 1000, "medium": 500, "hard": 333, "none": 111}
 
 COLORS = {
     0: (30, 30, 30),  # Background

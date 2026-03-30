@@ -11,7 +11,7 @@ from config import (
     AGENT_CAPS,
 )
 from tetris import Tetris
-from models.agent import Agent
+from agents.agent import Agent
 from home import run_home
 
 
@@ -93,10 +93,14 @@ class Game:
 
         if self.p1_agent and not self.p1.game_over:
             current_id = id(self.p1.piece)
-            if current_id != self.p1_piece_id and (now - self._p1_last_piece_time >= self.agent_cap):
+            if current_id != self.p1_piece_id and (
+                now - self._p1_last_piece_time >= self.agent_cap
+            ):
                 self.p1_piece_id = current_id
                 self.p1_pending = self.p1_agent.get_command_sequence(
-                    self.p1.board.copy(), self.p1.piece, self.p2.get_game_state()["aggregate_height"]
+                    self.p1.board.copy(),
+                    self.p1.piece,
+                    self.p2.get_game_state()["aggregate_height"],
                 )
                 self._p1_last_piece_time = now
                 for cmd in self.p1_pending:
@@ -105,10 +109,14 @@ class Game:
 
         if self.p2_agent and not self.p2.game_over:
             current_id = id(self.p2.piece)
-            if current_id != self.p2_piece_id and (now - self._p2_last_piece_time >= self.agent_cap):
+            if current_id != self.p2_piece_id and (
+                now - self._p2_last_piece_time >= self.agent_cap
+            ):
                 self.p2_piece_id = current_id
                 self.p2_pending = self.p2_agent.get_command_sequence(
-                    self.p2.board.copy(), self.p2.piece, self.p1.get_game_state()["aggregate_height"]
+                    self.p2.board.copy(),
+                    self.p2.piece,
+                    self.p1.get_game_state()["aggregate_height"],
                 )
                 self._p2_last_piece_time = now
                 for cmd in self.p2_pending:

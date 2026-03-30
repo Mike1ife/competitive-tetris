@@ -1,7 +1,5 @@
-import numpy as np
-from tetris import Piece
-from models.decider import Decider
-from models.pathfinder import Pathfinder
+from agents.decider import Decider
+from agents.pathfinder import Pathfinder
 
 
 class Agent:

@@ -3,7 +3,7 @@ from collections import defaultdict
 import pygame
 from config import P1_COMMANDS, P2_COMMANDS, BOARD_W, PADDING
 from tetris import Tetris
-from models.agent import Agent
+from agents.agent import Agent
 
 
 def run_headless_round(
