@@ -33,9 +33,9 @@ DISCOUNT = 0.95
 EPOCHS = 1
 EPSILON_START = 1.0
 EPSILON_MIN = 0.05
-EPSILON_STOP_EP = 5000
+EPSILON_STOP_EP = 2000
 REPLAY_START = 1000
-TRAIN_EPISODES = 20000
+TRAIN_EPISODES = 5000
 TARGET_UPDATE = 200
 SAVE_PATH = "tetris_dqn.keras"
 
@@ -165,6 +165,33 @@ class DQNAgent:
         print(f"Saved → {SAVE_PATH}")
 
 
+def heuristic_score(action):
+    b = action["board_result"]
+    heights = [
+        next((ROWS - r for r in range(ROWS) if b[r][c]), 0) for c in range(COLS)
+    ]
+    max_h = max(heights)
+    agg_h = sum(heights)
+    holes = sum(
+        1
+        for c in range(COLS)
+        for r in range(ROWS - heights[c], ROWS)
+        if not b[r][c]
+    )
+    bump = sum(abs(heights[c] - heights[c + 1]) for c in range(COLS - 1))
+
+    lines = action["lines_cleared"]
+    line_score = {0: 0, 1: 150, 2: 400, 3: 800, 4: 1600}.get(lines, 1600)
+
+    return (
+        line_score
+        - holes * 3.0
+        - max_h * 0.5
+        - agg_h * 0.1
+        - bump * 0.2
+    )
+
+
 def play_episode(
     p1: Tetris, p2: Tetris, agent: DQNAgent, pf: Pathfinder, max_pieces: int = 1000
 ):
@@ -186,10 +213,10 @@ def play_episode(
             p1.execute(cmd)
         pygame.event.clear()
 
-        # random opponent step
+        # heuristic opponent step
         opp_acts = pf.get_actions(p2.board.copy(), p2.piece)
         if opp_acts:
-            for cmd in random.choice(opp_acts)["sequence"]:
+            for cmd in max(opp_acts, key=heuristic_score)["sequence"]:
                 p2.execute(cmd)
             pygame.event.clear()
 
@@ -205,20 +232,19 @@ def play_episode(
 
         gs = p1.get_game_state()
         height_delta = gs["aggregate_height"] - prev_height
-        line_rewards = {0: 0, 1: 100, 2: 300, 3: 500, 4: 800}
+        line_rewards = {0: 0, 1: 100, 2: 300, 3: 600, 4: 1200}
         reward = (
-            line_rewards.get(normal_cleared, 800)
-            + garbage_cleared * 50
-            + 1
-            - gs["holes"] * 0.5
-            - gs["bumpiness"] * 0.1
+            line_rewards.get(normal_cleared, 1200)
+            + garbage_cleared * 100
+            - gs["holes"] * 0.75
+            - gs["bumpiness"] * 0.15
             - max(height_delta, 0) * 0.5
-            + opp_agg_after * 1.0
+            + min(height_delta, 0) * 0.3
         )
         if p1.game_over:
-            reward = -500
+            reward = -1000
         elif p2.game_over:
-            reward += 20
+            reward += 800
 
         prev_height = gs["aggregate_height"]
 
