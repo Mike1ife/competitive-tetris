@@ -91,7 +91,7 @@ def build_model():
         ]
     )
     model.compile(
-        loss=keras.losses.Huber, optimizer=keras.optimizers.Adam(learning_rate=1e-3)
+        loss="huber", optimizer=keras.optimizers.Adam(learning_rate=1e-3)
     )
     return model
 
@@ -258,7 +258,6 @@ def train():
     best_score = -np.inf
 
     rewards = []
-    high_rewards = []
     for ep in range(1, TRAIN_EPISODES + 1):
         p1 = Tetris(x_offset=0, commands=AGENT_COMMANDS)
         p2 = Tetris(x_offset=0, commands=OPP_COMMANDS)
@@ -271,9 +270,6 @@ def train():
 
         rewards.append(total_reward)
 
-        if garbage >= 12:
-            high_rewards.append(total_reward)
-
         agent.train(pf)
         agent.decay_epsilon()
 
@@ -282,10 +278,9 @@ def train():
             agent.save()
 
         if ep % 50 == 0:
-            high_avg = np.mean(high_rewards[-20:]) if high_rewards else 0
             print(
                 f"ep={ep:4d}  reward={total_reward:7.1f}  eps={agent.epsilon:.3f}  "
-                f"best={best_score:.1f}  high_avg={high_avg:.1f}"
+                f"best={best_score:.1f}"
             )
         if ep % 200 == 0:
             draw_figure(rewards)
