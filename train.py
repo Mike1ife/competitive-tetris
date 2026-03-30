@@ -33,9 +33,9 @@ DISCOUNT = 0.95
 EPOCHS = 1
 EPSILON_START = 1.0
 EPSILON_MIN = 0.05
-EPSILON_STOP_EP = 5000
+EPSILON_STOP_EP = 2000
 REPLAY_START = 1000
-TRAIN_EPISODES = 20000
+TRAIN_EPISODES = 5000
 TARGET_UPDATE = 200
 SAVE_PATH = "tetris_dqn.keras"
 
@@ -209,16 +209,16 @@ def play_episode(
         reward = (
             line_rewards.get(normal_cleared, 800)
             + garbage_cleared * 50
-            + 1
             - gs["holes"] * 0.5
             - gs["bumpiness"] * 0.1
             - max(height_delta, 0) * 0.5
-            + opp_agg_after * 1.0
+            + min(height_delta, 0) * 0.25
+            + opp_agg_after * 0.5
         )
         if p1.game_over:
             reward = -500
         elif p2.game_over:
-            reward += 20
+            reward += 500
 
         prev_height = gs["aggregate_height"]
 
