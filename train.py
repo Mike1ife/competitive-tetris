@@ -35,7 +35,7 @@ EPSILON_START = 1.0
 EPSILON_MIN = 0.05
 EPSILON_STOP_EP = 5000
 REPLAY_START = 1000
-TRAIN_EPISODES = 20000
+TRAIN_EPISODES = 8000
 TARGET_UPDATE = 200
 SAVE_PATH = "tetris_dqn.keras"
 
@@ -186,10 +186,27 @@ def play_episode(
             p1.execute(cmd)
         pygame.event.clear()
 
+        """Heuristic for Opponent"""
+
+        def heuristic_score(action):
+            b = action["board_result"]
+            heights = [
+                next((ROWS - r for r in range(ROWS) if b[r][c]), 0) for c in range(COLS)
+            ]
+            agg = sum(heights)
+            holes = sum(
+                1
+                for c in range(COLS)
+                for r in range(ROWS - heights[c], ROWS)
+                if not b[r][c]
+            )
+            bump = sum(abs(heights[c] - heights[c + 1]) for c in range(COLS - 1))
+            return action["lines_cleared"] * 100 - agg * 0.2 - holes * 0.5 - bump * 0.1
+
         # random opponent step
         opp_acts = pf.get_actions(p2.board.copy(), p2.piece)
         if opp_acts:
-            for cmd in random.choice(opp_acts)["sequence"]:
+            for cmd in max(opp_acts, key=heuristic_score)["sequence"]:
                 p2.execute(cmd)
             pygame.event.clear()
 
