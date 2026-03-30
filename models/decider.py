@@ -12,15 +12,15 @@ class Decider:
     def __init__(self, source: str):
         self.model = keras.models.load_model(source)
 
-    def get_sequence(self, actions: list, opp_agg: int = 0) -> list:
+    def get_sequence(self, actions: list, piece: Piece, opp_agg: int = 0) -> list:
         if not actions:
             return []
 
-        states = np.array([self._make_state(a, opp_agg) for a in actions])
+        states = np.array([self._make_state(a, piece, opp_agg) for a in actions])
         qs = self.model.predict(states, verbose=0).flatten()
         return actions[int(np.argmax(qs))]["sequence"]
 
-    def _make_state(self, action: dict, opp_agg: int) -> np.ndarray:
+    def _make_state(self, action: dict, piece: Piece, opp_agg: int) -> np.ndarray:
         board = action["board_result"]
         lines_cleared = action["lines_cleared"]
 
@@ -40,6 +40,6 @@ class Decider:
         own = np.array([agg, holes, bump, lines_cleared], dtype=np.float32)
 
         piece_oh = np.zeros(NUM_PIECES, dtype=np.float32)
-        piece_oh[action.get("color_id", 0)] = 1.0
+        piece_oh[piece.color_id - 1] = 1.0
 
         return np.concatenate([own, piece_oh, [opp_agg]])

@@ -112,7 +112,7 @@ class DQNAgent:
                 for a in actions
             ]
         )
-        qs = self.model.predict(states, verbose=0).flatten()
+        qs = self.model(states, training=False).numpy().flatten()
         return actions[int(np.argmax(qs))]
 
     # memory tuple: (action_state, reward, done, next_board, next_piece, opp_agg)
@@ -146,7 +146,7 @@ class DQNAgent:
                         ]
                     )
                     target = reward + DISCOUNT * np.max(
-                        self.target_model.predict(next_states, verbose=0).flatten()
+                        self.target_model(next_states, training=False).numpy().flatten()
                     )
             x.append(action_state)
             y.append(target)
@@ -166,10 +166,11 @@ class DQNAgent:
 
 
 def play_episode(
-    p1: Tetris, p2: Tetris, agent: DQNAgent, pf: Pathfinder, max_pieces: int = 2000
+    p1: Tetris, p2: Tetris, agent: DQNAgent, pf: Pathfinder, max_pieces: int = 1000
 ):
     total_reward = 0
     pieces = 0
+    prev_height = p1.get_game_state()["aggregate_height"]
     while not p1.game_over and not p2.game_over and pieces < max_pieces:
         pieces += 1
         actions = pf.get_actions(p1.board.copy(), p1.piece)
@@ -203,19 +204,23 @@ def play_episode(
         )
 
         gs = p1.get_game_state()
+        height_delta = gs["aggregate_height"] - prev_height
         line_rewards = {0: 0, 1: 100, 2: 300, 3: 500, 4: 800}
         reward = (
             line_rewards.get(normal_cleared, 800)
             + garbage_cleared * 50
+            + 1
             - gs["holes"] * 0.5
             - gs["bumpiness"] * 0.1
-            - gs["aggregate_height"] * 0.2
+            - max(height_delta, 0) * 0.5
             + opp_agg_after * 1.0
         )
         if p1.game_over:
             reward = -500
         elif p2.game_over:
             reward += 20
+
+        prev_height = gs["aggregate_height"]
 
         done = p1.game_over or p2.game_over
         agent.remember(
@@ -242,17 +247,21 @@ def train():
 
     rewards = []
     epsilons = []
+    high_rewards = []
     for ep in range(1, TRAIN_EPISODES + 1):
         p1 = Tetris(x_offset=0, commands=AGENT_COMMANDS)
         p2 = Tetris(x_offset=0, commands=OPP_COMMANDS)
         p1.opponent = p2
         p2.opponent = p1
-        p1.respawn_garbage_lines(random.randint(0, 8))
+        garbage = random.randint(0, 14)
+        p1.respawn_garbage_lines(garbage)
 
         total_reward = play_episode(p1, p2, agent, pf)
 
         rewards.append(total_reward)
         epsilons.append(agent.epsilon)
+        if garbage >= 12:
+            high_rewards.append(total_reward)
 
         agent.train(pf)
         agent.decay_epsilon()
@@ -262,8 +271,10 @@ def train():
             agent.save()
 
         if ep % 50 == 0:
+            high_avg = np.mean(high_rewards[-20:]) if high_rewards else 0
             print(
-                f"ep={ep:4d}  reward={total_reward:7.1f}  eps={agent.epsilon:.3f}  best={best_score:.1f}"
+                f"ep={ep:4d}  reward={total_reward:7.1f}  eps={agent.epsilon:.3f}  "
+                f"best={best_score:.1f}  high_avg={high_avg:.1f}"
             )
         if ep % 200 == 0:
             draw_figure(rewards, epsilons)

@@ -13,4 +13,4 @@ class Agent:
 
     def get_command_sequence(self, board, piece, opp_agg):
         actions = self.pathfinder.get_actions(board, piece)
-        return self.decider.get_sequence(actions, opp_agg)
+        return self.decider.get_sequence(actions, piece, opp_agg)

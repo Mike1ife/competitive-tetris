@@ -1,5 +1,6 @@
 import numpy as np
 from tetris import Piece
+from config import TETROMINOS_NAMES, WALL_KICKS
 
 
 class Pathfinder:
@@ -34,8 +35,11 @@ class Pathfinder:
                 lines_cleared, board_result = self._clear_lines(board_placed)
 
                 sequence = self._build_sequence(
-                    piece, current_rotation_id, rotation_id, col
+                    board, piece, current_rotation_id, rotation_id, col
                 )
+                if sequence is None:
+                    continue
+
                 actions.append(
                     {
                         "row": dropped_row,
@@ -105,24 +109,61 @@ class Pathfinder:
         empty = np.zeros((clear_count, cols), dtype=int)
         return clear_count, np.vstack([empty, board[remain]])
 
+    def _try_rotate(
+        self, board: np.ndarray, piece_color_id: int, shape: np.ndarray,
+        rotation_id: int, row: int, col: int
+    ) -> tuple[np.ndarray, int, int, int] | None:
+        rotated_shape = np.rot90(shape, axes=(1, 0))
+        target_rotation_id = (rotation_id + 1) % 4
+        kick_offsets = WALL_KICKS[TETROMINOS_NAMES[piece_color_id]][
+            (rotation_id, target_rotation_id)
+        ]
+        for drow, dcol in kick_offsets:
+            new_row = row + drow
+            new_col = col + dcol
+            if self._can_move_to(board, rotated_shape, new_row, new_col):
+                return rotated_shape, new_row, new_col, target_rotation_id
+        return None
+
     def _build_sequence(
         self,
+        board: np.ndarray,
         piece: Piece,
         current_rotation_id: int,
         target_rotation_id: int,
         target_col: int,
     ):
         sequence = []
+        sim_shape = piece.shape.copy()
+        sim_row = piece.row
+        sim_col = piece.col
+        sim_rot = current_rotation_id
 
         rotate_count = (target_rotation_id - current_rotation_id) % 4
-        sequence.extend(["rotate"] * rotate_count)
-        # negative: move left
-        # positive: move right
-        col_delta = target_col - piece.col
+        for _ in range(rotate_count):
+            result = self._try_rotate(
+                board, piece.color_id, sim_shape, sim_rot, sim_row, sim_col
+            )
+            if result is None:
+                return None
+            sim_shape, sim_row, sim_col, sim_rot = result
+            sequence.append("rotate")
+
+        col_delta = target_col - sim_col
         if col_delta < 0:
-            sequence.extend(["left"] * abs(col_delta))
+            for _ in range(abs(col_delta)):
+                if self._can_move_to(board, sim_shape, sim_row, sim_col - 1):
+                    sim_col -= 1
+                    sequence.append("left")
+                else:
+                    return None
         else:
-            sequence.extend(["right"] * col_delta)
+            for _ in range(col_delta):
+                if self._can_move_to(board, sim_shape, sim_row, sim_col + 1):
+                    sim_col += 1
+                    sequence.append("right")
+                else:
+                    return None
 
         # Hard Drop in the end
         sequence.append("drop")
