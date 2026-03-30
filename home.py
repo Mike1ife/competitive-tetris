@@ -132,8 +132,8 @@ def run_home(
         btn_start.render(screen, font_lg)
 
         hints = [
-            "P1: A/D move · W rotate · S soft drop · Space hard drop",
-            "P2: ←/→ move · ↑ rotate · ↓ soft drop · Num0 hard drop",
+            "P1: A/D move · W rotate · Q hold · S soft drop · Space hard drop",
+            "P2: ←/→ move · ↑ rotate · RShift hold · ↓ soft drop · Num0 hard drop",
         ]
         for i, hint in enumerate(hints):
             s = font_sm.render(hint, True, (140, 140, 140))
