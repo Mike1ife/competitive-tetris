@@ -16,6 +16,7 @@ AGENT_COMMANDS = {
     "right": (0, "d"),
     "down": (0, "s"),
     "rotate": (0, "w"),
+    "hold": (0, "q"),
     "drop": (0, "p"),
 }
 OPP_COMMANDS = {
@@ -23,11 +24,13 @@ OPP_COMMANDS = {
     "right": (0, "r"),
     "down": (0, "n"),
     "rotate": (0, "u"),
+    "hold": (0, "/"),
     "drop": (0, "0"),
 }
 
 NUM_PIECES = len(TETROMINOS)  # 7
-STATE_SIZE = 4 + NUM_PIECES + 1  # board features + piece one-hot + opp height
+# board features(4) + current piece one-hot(7) + hold piece one-hot(7) + opp height(1) + hold_available(1)
+STATE_SIZE = 4 + NUM_PIECES + NUM_PIECES + 1 + 1
 MEM_SIZE = 20000
 BATCH_SIZE = 64
 DISCOUNT = 0.95
@@ -38,18 +41,15 @@ EPSILON_STOP_EP = 2000
 REPLAY_START = 1000
 TRAIN_EPISODES = 5000
 TARGET_UPDATE = 200
+STRATEGY = "neutral"
 SAVE_PATH = "./models/tetris_dqn.keras"
 
 
 def make_state(
-    board: np.ndarray, lines_cleared: int, piece: Piece, opp_agg: int
+    board: np.ndarray, lines_cleared: int, piece: Piece, opp_agg: int,
+    hold_piece=None, hold_used=False
 ) -> np.ndarray:
-    """Build a state vector from post-action board features.
-
-    Used identically in best_action (to score candidates) and in replay
-    (as the training input), so the model trains on the same distribution
-    it infers on.
-    """
+    """Build a state vector from post-action board features."""
     heights = np.zeros(COLS, dtype=int)
     for col in range(COLS):
         for row in range(ROWS):
@@ -66,9 +66,18 @@ def make_state(
         if not board[r][c]
     )
     own = np.array([agg, holes, bump, lines_cleared], dtype=np.float32)
+
     piece_oh = np.zeros(NUM_PIECES, dtype=np.float32)
     piece_oh[piece.color_id - 1] = 1.0
-    return np.concatenate([own, piece_oh, [opp_agg]])
+
+    hold_oh = np.zeros(NUM_PIECES, dtype=np.float32)
+    if hold_piece is not None:
+        _, hold_color_id = hold_piece
+        hold_oh[hold_color_id - 1] = 1.0
+
+    hold_avail = np.array([0.0 if hold_used else 1.0], dtype=np.float32)
+
+    return np.concatenate([own, piece_oh, hold_oh, [opp_agg], hold_avail])
 
 
 def build_model():
@@ -97,22 +106,21 @@ class DQNAgent:
         self._decay = (EPSILON_START - EPSILON_MIN) / EPSILON_STOP_EP
         self.update_counter = 0
 
-    def best_action(self, actions, piece, opp_agg):
+    def best_action(self, actions, piece, opp_agg, hold_piece=None, hold_used=False):
         if random.random() < self.epsilon:
             return random.choice(actions)
         states = np.array(
             [
-                make_state(a["board_result"], a["lines_cleared"], piece, opp_agg)
+                make_state(a["board_result"], a["lines_cleared"], piece, opp_agg, hold_piece, hold_used)
                 for a in actions
             ]
         )
         qs = self.model(states, training=False).numpy().flatten()
         return actions[int(np.argmax(qs))]
 
-    # memory tuple: (action_state, reward, done, next_board, next_piece, opp_agg)
-    def remember(self, action_state, reward, done, next_board, next_piece, opp_agg):
+    def remember(self, action_state, reward, done, next_board, next_piece, opp_agg, hold_piece, hold_used):
         self.memory.append(
-            (action_state, reward, done, next_board, next_piece, opp_agg)
+            (action_state, reward, done, next_board, next_piece, opp_agg, hold_piece, hold_used)
         )
 
     def train(self, pf: Pathfinder):
@@ -120,11 +128,11 @@ class DQNAgent:
             return
         batch = random.sample(self.memory, min(BATCH_SIZE, len(self.memory)))
         x, y = [], []
-        for action_state, reward, done, next_board, next_piece, opp_agg in batch:
+        for action_state, reward, done, next_board, next_piece, opp_agg, hold_piece, hold_used in batch:
             if done:
                 target = reward
             else:
-                next_actions = pf.get_actions(next_board, next_piece)
+                next_actions = pf.get_actions(next_board, next_piece, hold_piece, hold_used)
                 if not next_actions:
                     target = reward
                 else:
@@ -135,6 +143,8 @@ class DQNAgent:
                                 a["lines_cleared"],
                                 next_piece,
                                 opp_agg,
+                                hold_piece,
+                                hold_used,
                             )
                             for a in next_actions
                         ]
@@ -172,21 +182,21 @@ def play_episode(
     prev_height = p1.get_game_state()["aggregate_height"]
     while not p1.game_over and not p2.game_over and pieces < max_pieces:
         pieces += 1
-        actions = pf.get_actions(p1.board.copy(), p1.piece)
+        actions = pf.get_actions(p1.board.copy(), p1.piece, p1.hold_piece, p1.hold_used)
         if not actions:
             break
 
         opp_agg = p2.get_game_state()["aggregate_height"]
         total_before = p1.normal_lines_cleared
         garbage_before = p1.garbage_lines_cleared
-        chosen = agent.best_action(actions, p1.piece, opp_agg)
+        chosen = agent.best_action(actions, p1.piece, opp_agg, p1.hold_piece, p1.hold_used)
 
         for cmd in chosen["sequence"]:
             p1.execute(cmd)
         pygame.event.clear()
 
         # heuristic opponent step
-        opp_acts = pf.get_actions(p2.board.copy(), p2.piece)
+        opp_acts = pf.get_actions(p2.board.copy(), p2.piece, p2.hold_piece, p2.hold_used)
         if opp_acts:
             for cmd in max(opp_acts, key=strategy.get_heuristic)["sequence"]:
                 p2.execute(cmd)
@@ -200,7 +210,7 @@ def play_episode(
         height_delta = gs["aggregate_height"] - prev_height
 
         reward = strategy.get_reward(
-            "neutral",
+            STRATEGY,
             normal_cleared,
             garbage_cleared,
             gs["holes"],
@@ -209,18 +219,17 @@ def play_episode(
         )
 
         if p1.game_over:
-            reward = -1000
+            reward = strategy.penalties[STRATEGY]["death"]
         elif p2.game_over:
-            reward += 800
+            reward += strategy.penalties[STRATEGY]["win"]
 
         prev_height = gs["aggregate_height"]
 
         done = p1.game_over or p2.game_over
 
-        # build action_state from the simulated post-placement board
-        # this matches exactly what best_action scored during selection
         action_state = make_state(
-            chosen["board_result"], normal_cleared, p1.piece, opp_agg_after
+            chosen["board_result"], normal_cleared, p1.piece, opp_agg_after,
+            p1.hold_piece, p1.hold_used,
         )
         agent.remember(
             action_state,
@@ -229,6 +238,8 @@ def play_episode(
             p1.board.copy(),
             p1.piece.copy(),
             opp_agg_after,
+            p1.hold_piece,
+            p1.hold_used,
         )
         total_reward += reward
 
@@ -299,7 +310,7 @@ def draw_figure(rewards):
 
     ax.set(xlabel="Episode", ylabel="Reward", title="DQN rewards")
     ax.legend()
-    fig.savefig("/res/rewards.png")
+    fig.savefig("./res/rewards.png")
     plt.close(fig)
 
 

@@ -28,7 +28,9 @@ def run_headless_round(
             if cid != p1_piece_id:
                 p1_piece_id = cid
                 cmds = p1_agent.get_command_sequence(
-                    p1.board.copy(), p1.piece, p2.get_game_state()["aggregate_height"]
+                    p1.board.copy(), p1.piece,
+                    p2.get_game_state()["aggregate_height"],
+                    p1.hold_piece, p1.hold_used,
                 )
                 for cmd in cmds:
                     p1.execute(cmd)
@@ -38,7 +40,9 @@ def run_headless_round(
             if cid != p2_piece_id:
                 p2_piece_id = cid
                 cmds = p2_agent.get_command_sequence(
-                    p2.board.copy(), p2.piece, p1.get_game_state()["aggregate_height"]
+                    p2.board.copy(), p2.piece,
+                    p1.get_game_state()["aggregate_height"],
+                    p2.hold_piece, p2.hold_used,
                 )
                 for cmd in cmds:
                     p2.execute(cmd)
@@ -69,16 +73,13 @@ def run_double_round_robin(players: dict[str, str], rounds_per_matchup: int = 1)
     """
     pygame.init()
 
-    # Load all agents once
     agents = {
         label: Agent(path, list(P1_COMMANDS.keys())) for label, path in players.items()
     }
 
-    # All ordered pairs — each pair plays twice (A vs B, then B vs A)
     matchups = list(permutations(players.keys(), 2))
     total_matches = len(matchups) * rounds_per_matchup
 
-    # Per-player stats
     stats = defaultdict(lambda: {"wins": 0, "losses": 0, "draws": 0, "score": 0})
 
     print(f"Players     : {', '.join(f'{k}={v}' for k, v in players.items())}")
@@ -96,7 +97,6 @@ def run_double_round_robin(players: dict[str, str], rounds_per_matchup: int = 1)
             game_num += 1
             result = run_headless_round(agents[home], agents[away])
 
-            # Map generic "p1"/"p2" result back to actual player labels
             if result["winner"] == "p1":
                 winner_label = home
                 stats[home]["wins"] += 1
@@ -118,8 +118,6 @@ def run_double_round_robin(players: dict[str, str], rounds_per_matchup: int = 1)
                 f"  {result['p1_score']:>10}  {result['p2_score']:>10}"
             )
 
-    # --- Standings ---
-    # Sort by wins desc, then draws desc, then cumulative score desc
     standings = sorted(
         stats.items(),
         key=lambda x: (x[1]["wins"], x[1]["draws"], x[1]["score"]),

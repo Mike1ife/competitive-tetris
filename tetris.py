@@ -13,7 +13,6 @@ from config import (
     CELL_SIZE,
     BOARD_H,
     BOARD_W,
-    MAX_GARBAGE_HOLE,
     SCORE_TABLE,
     PREVIEW_W,
 )
@@ -46,6 +45,8 @@ class Tetris:
         self.cell_colors = np.zeros((ROWS, COLS), dtype=int)
         self.bag = list()  # 7-bag system
         self.piece: Piece = self._respawn_piece()
+        self.hold_piece = None  # (shape, color_id) tuple
+        self.hold_used = False  # can only hold once per piece
         self.opponent: Tetris = None  # Also a Tetris object
         self.game_over = False
         self.score = 0
@@ -55,21 +56,33 @@ class Tetris:
         self.accelerate = False
 
     def respawn_garbage_lines(self, count: int):
-        """Respawn garbage lines"""
+        """Respawn garbage lines with consistent hole column (Jstris style)"""
         if count == 0:
             return
         
+        hole_col = random.randint(0, COLS - 1)
         garbage_lines = []
         for _ in range(count):
             row = np.ones(COLS, dtype=int)
-            hole_count = random.randint(1, MAX_GARBAGE_HOLE)
-            hole_cols = random.sample(range(COLS), hole_count)
-            row[hole_cols] = 0
+            row[hole_col] = 0
             garbage_lines.append(row)
 
         garbage_lines = np.array(garbage_lines)
         self.board = np.vstack((self.board[count:], garbage_lines))
         self.cell_colors = np.vstack((self.cell_colors[count:], garbage_lines * 8))
+
+    def hold(self):
+        """Swap current piece with hold piece. Can only hold once per piece."""
+        if self.hold_used:
+            return
+        self.hold_used = True
+        if self.hold_piece is None:
+            self.hold_piece = (self.piece.shape.copy(), self.piece.color_id)
+            self.piece = self._respawn_piece()
+        else:
+            old_shape, old_color = self.hold_piece
+            self.hold_piece = (self.piece.shape.copy(), self.piece.color_id)
+            self.piece = Piece(old_shape, old_color)
 
     def handle_event(self, event: pygame.event.Event):
         """This method is used to handle user's key event"""
@@ -116,6 +129,8 @@ class Tetris:
                 piece.row = new_row
                 piece.col = new_col
                 piece.rotation_id = (piece.rotation_id + 1) % 4
+        elif command == "hold":
+            self.hold()
         elif command == "drop":
             while self._can_move_to(piece.shape, piece.row + 1, piece.col):
                 piece.row += 1
@@ -183,19 +198,46 @@ class Tetris:
             )
 
     def render_preview(self, screen: pygame.surface.Surface, font: pygame.font.Font, preview_x: int):
-        """Render next piece preview at the given x position."""
-        label = font.render("NEXT", True, (200, 200, 200))
-        screen.blit(label, (preview_x + PREVIEW_W // 2 - label.get_width() // 2, 30))
+        """Render next piece and hold piece preview at the given x position."""
+        # HOLD label and box
+        hold_label = font.render("HOLD", True, (200, 200, 200))
+        screen.blit(hold_label, (preview_x + PREVIEW_W // 2 - hold_label.get_width() // 2, 30))
 
-        box_rect = pygame.Rect(preview_x + 5, 55, PREVIEW_W - 10, PREVIEW_W - 10)
-        pygame.draw.rect(screen, (50, 50, 50), box_rect, border_radius=4)
-        pygame.draw.rect(screen, (80, 80, 80), box_rect, 1, border_radius=4)
+        hold_box = pygame.Rect(preview_x + 5, 55, PREVIEW_W - 10, PREVIEW_W - 10)
+        pygame.draw.rect(screen, (50, 50, 50), hold_box, border_radius=4)
+        border_color = (60, 60, 60) if self.hold_used else (80, 80, 80)
+        pygame.draw.rect(screen, border_color, hold_box, 1, border_radius=4)
+
+        if self.hold_piece is not None:
+            shape, color_id = self.hold_piece
+            piece_h, piece_w = shape.shape
+            cell = 18
+            start_x = preview_x + PREVIEW_W // 2 - (piece_w * cell) // 2
+            start_y = 55 + (PREVIEW_W - 10) // 2 - (piece_h * cell) // 2
+            color = COLORS[color_id] if not self.hold_used else tuple(c // 2 for c in COLORS[color_id])
+            for r, c in np.argwhere(shape):
+                rect = pygame.Rect(
+                    start_x + c * cell,
+                    start_y + r * cell,
+                    cell - 1,
+                    cell - 1,
+                )
+                pygame.draw.rect(screen, color, rect)
+
+        # NEXT label and box
+        next_label = font.render("NEXT", True, (200, 200, 200))
+        next_y = 155
+        screen.blit(next_label, (preview_x + PREVIEW_W // 2 - next_label.get_width() // 2, next_y))
+
+        next_box = pygame.Rect(preview_x + 5, next_y + 25, PREVIEW_W - 10, PREVIEW_W - 10)
+        pygame.draw.rect(screen, (50, 50, 50), next_box, border_radius=4)
+        pygame.draw.rect(screen, (80, 80, 80), next_box, 1, border_radius=4)
 
         shape, color_id = self._get_next_piece_info()
         piece_h, piece_w = shape.shape
         cell = 18
         start_x = preview_x + PREVIEW_W // 2 - (piece_w * cell) // 2
-        start_y = 55 + (PREVIEW_W - 10) // 2 - (piece_h * cell) // 2
+        start_y = next_y + 25 + (PREVIEW_W - 10) // 2 - (piece_h * cell) // 2
 
         for r, c in np.argwhere(shape):
             rect = pygame.Rect(
@@ -214,10 +256,6 @@ class Tetris:
 
     def _respawn_piece(self) -> Piece:
         """Respawn a new piece once we start the game or place a piece"""
-        # 7-bag system means we put all unique pieces into the bag and shuffle it
-        # each time we take one piece from the bag until it's empty,
-        # then we refill and shuffle again
-        # Keep 2 bags so preview always has a piece to show
         if len(self.bag) < 7:
             new_bag = TETROMINOS.copy()
             random.shuffle(new_bag)
@@ -229,11 +267,8 @@ class Tetris:
     def _can_move_to(self, shape: np.ndarray, row: int, col: int) -> bool:
         """Check whether we can move shape to (row, col)"""
         for r, c in np.argwhere(shape):
-            # r, c represent local coordinate of the shape where shape[r, c] = 1
-            # shape position + local coordinate = position of TETROMINOS
             new_row = row + r
             new_col = col + c
-            # return False if collide
             if new_row < 0 or new_row >= ROWS or new_col < 0 or new_col >= COLS:
                 return False
             if self.board[new_row][new_col]:
@@ -278,23 +313,24 @@ class Tetris:
         cleared_count, new_board, new_cell_colors = self._clear_lines()
         self.board = new_board
         self.cell_colors = new_cell_colors
-        if cleared_count and self.opponent:
-            self.opponent.respawn_garbage_lines(cleared_count)
+        attack_table = {0: 0, 1: 0, 2: 1, 3: 2, 4: 4}
+        garbage_to_send = attack_table.get(cleared_count, 4)
+        if garbage_to_send and self.opponent:
+            self.opponent.respawn_garbage_lines(garbage_to_send)
 
         self.piece = self._respawn_piece()
-        # game is automatically over if respawned piece cannot be placed
+        self.hold_used = False  # reset hold for new piece
+
         if not self._can_move_to(self.piece.shape, self.piece.row, self.piece.col):
             self.game_over = True
 
     def _clear_lines(self) -> tuple[int, np.ndarray, np.ndarray]:
         """Clear lines (return number of cleared lines, excluding garbage lines, and resultant board)"""
-        # separately count complete normal lines and garbage lines
         complete_lines = []
         garbage_line_count = 0
         for row in range(ROWS):
             if all(self.board[row]):
                 complete_lines.append(row)
-                # use color to check if it's a garbage line
                 if 8 in self.cell_colors[row]:
                     garbage_line_count += 1
 
@@ -303,11 +339,9 @@ class Tetris:
         self.garbage_lines_cleared += garbage_line_count
         self.score += SCORE_TABLE.get(line_cleared, 800)
 
-        # Re-fill the board by placing empty lines on top of remaining rows
         remaining_lines = [row for row in range(ROWS) if row not in complete_lines]
         empty_lines = np.zeros((len(complete_lines), COLS), dtype=int)
 
-        # Stack vertically (empty -> remaining)
         new_board = np.vstack((empty_lines.copy(), self.board[remaining_lines]))
         new_cell_colors = np.vstack(
             (empty_lines.copy(), self.cell_colors[remaining_lines])
@@ -316,7 +350,6 @@ class Tetris:
         return line_cleared, new_board, new_cell_colors
 
     def _get_heights(self) -> np.ndarray:
-        """Get the height of the board"""
         heights = np.zeros(COLS, dtype=int)
         for col in range(COLS):
             for row in range(ROWS):
@@ -326,7 +359,6 @@ class Tetris:
         return heights
 
     def get_game_state(self) -> dict:
-        """Return game state properties needed for reward calculation"""
         heights = self._get_heights()
         return {
             "heights": heights,
@@ -336,7 +368,6 @@ class Tetris:
         }
 
     def _get_bumpiness(self, heights: np.ndarray = None) -> int:
-        """Get bumpiness of the board"""
         if heights is None:
             heights = self._get_heights()
         bumpiness = 0
@@ -345,7 +376,6 @@ class Tetris:
         return bumpiness
 
     def _get_holes(self, heights: np.ndarray = None) -> int:
-        """Get holes in the board"""
         if heights is None:
             heights = self._get_heights()
         holes = 0

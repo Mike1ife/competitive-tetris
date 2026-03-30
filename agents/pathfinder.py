@@ -1,30 +1,40 @@
 import numpy as np
 from tetris import Piece
-from config import TETROMINOS_NAMES, WALL_KICKS
+from config import COLS, TETROMINOS_NAMES, WALL_KICKS
 
 
 class Pathfinder:
     """Model to output a series of commands to reach the destination"""
 
-    # The difficulty in a well-rounded pathfinder is the discrepency
-    # between "down" behavior
-    # Our game runs continuously (FPS)
-    # BFS runs discretely
-    # So it's hard to decode BFS sequence into the sequence we want
-    # the agent to execute in real-time game
-
     def __init__(self):
         pass
 
-    def get_actions(self, board: np.ndarray, piece: Piece) -> list:
+    def get_actions(self, board: np.ndarray, piece: Piece, hold_info=None, hold_used=False) -> list:
+        """Get all possible actions for current piece and optionally hold piece.
+        
+        hold_info: (shape, color_id) tuple or None
+        hold_used: whether hold has already been used this piece
+        """
+        # Actions for current piece
+        actions = self._get_piece_actions(board, piece, prefix=[])
+
+        # Actions for hold piece (if hold is available)
+        if not hold_used:
+            if hold_info is not None:
+                hold_shape, hold_color_id = hold_info
+                hold_piece = Piece(hold_shape, hold_color_id)
+                hold_actions = self._get_piece_actions(board, hold_piece, prefix=["hold"])
+                actions.extend(hold_actions)
+
+        return actions
+
+    def _get_piece_actions(self, board: np.ndarray, piece: Piece, prefix: list) -> list:
         actions = []
         rotations = self._get_rotations(piece.shape)
         current_rotation_id = self._get_rotation_id(piece.shape, rotations)
 
         _, cols = board.shape
 
-        # Simply move horizontally and rotate sometimes
-        # then hard drop
         for rotation_id, shape in enumerate(rotations):
             for col in range(cols):
                 dropped_row = self._drop(board, shape, piece.row, col)
@@ -45,10 +55,10 @@ class Pathfinder:
                         "row": dropped_row,
                         "col": col,
                         "shape": shape,
-                        "sequence": sequence,
+                        "sequence": prefix + sequence,
                         "lines_cleared": lines_cleared,
                         "board_result": board_result,
-                        "color_id": piece.color_id - 1,  # 0-indexed for one-hot
+                        "color_id": piece.color_id - 1,
                     }
                 )
 
@@ -165,6 +175,5 @@ class Pathfinder:
                 else:
                     return None
 
-        # Hard Drop in the end
         sequence.append("drop")
         return sequence

@@ -2,7 +2,7 @@ import pygame
 import numpy as np
 
 AGENT1_SOURCE = "tetris_dqn_v4.keras"
-AGENT2_SOURCE = "tetris_dqn_v4.keras"
+AGENT2_SOURCE = "tetris_dqn_v3.keras"
 
 CELL_SIZE = 30  # cell size
 ROWS, COLS = 20, 10  # row cell num, col cell num
@@ -15,7 +15,6 @@ WIN_H = BOARD_H  # window height
 FPS = 60
 FALL_INTERVAL = 500  # drop rate = 500 ms
 ACCELERATE_INTERVAL = 50  # accelerate rate (pressing down) = 50 ms
-MAX_GARBAGE_HOLE = 3  # maximum holes in a garbage line
 
 AGENT_CAPS = {"easy": 1000, "medium": 500, "hard": 333, "none": 111}
 
@@ -82,6 +81,7 @@ P1_COMMANDS = {
     "right": (pygame.K_d, "d"),
     "down": (pygame.K_s, "s"),
     "rotate": (pygame.K_w, "w"),
+    "hold": (pygame.K_q, "q"),
     "drop": (pygame.K_SPACE, "p"),
 }
 
@@ -90,6 +90,7 @@ P2_COMMANDS = {
     "right": (pygame.K_RIGHT, "r"),
     "down": (pygame.K_DOWN, "n"),
     "rotate": (pygame.K_UP, "u"),
+    "hold": (pygame.K_RSHIFT, "/"),
     "drop": (pygame.K_KP_0, "0"),
 }
 

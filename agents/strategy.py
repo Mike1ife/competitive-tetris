@@ -9,6 +9,11 @@ class Strategy:
             "defensive": self._get_defensive_reward,
         }
         self.heuristic_table = {0: 0, 1: 150, 2: 400, 3: 800, 4: 1600}
+        self.penalties = {
+            "neutral":   {"death": -1000, "win": 800},
+            "offensive": {"death": -500,  "win": 1500},
+            "defensive": {"death": -2000, "win": 500},
+        }
 
     def get_reward(
         self,
@@ -31,8 +36,9 @@ class Strategy:
         bumpiness: int,
         height_delta: int,
     ):
+        line_rewards = {0: 0, 1: 100, 2: 300, 3: 600, 4: 1200}
         return (
-            SCORE_TABLE.get(normal_cleared, 1200)
+            line_rewards.get(normal_cleared, 1200)
             + garbage_cleared * 100
             - holes * 0.75
             - bumpiness * 0.15
@@ -40,9 +46,40 @@ class Strategy:
             + min(height_delta, 0) * 0.3
         )
 
-    def _get_offensive_reward(self): ...
+    def _get_offensive_reward(
+        self,
+        normal_cleared: int,
+        garbage_cleared: int,
+        holes: int,
+        bumpiness: int,
+        height_delta: int,
+    ):
+        line_rewards = {0: 0, 1: 200, 2: 600, 3: 1200, 4: 2400}
+        return (
+            line_rewards.get(normal_cleared, 2400)
+            + garbage_cleared * 100
+            - holes * 0.5
+            - bumpiness * 0.1
+            - max(height_delta, 0) * 0.3
+        )
 
-    def _get_defensive_reward(self): ...
+    def _get_defensive_reward(
+        self,
+        normal_cleared: int,
+        garbage_cleared: int,
+        holes: int,
+        bumpiness: int,
+        height_delta: int,
+    ):
+        line_rewards = {0: 0, 1: 100, 2: 200, 3: 400, 4: 800}
+        return (
+            line_rewards.get(normal_cleared, 800)
+            + garbage_cleared * 200
+            - holes * 1.5
+            - bumpiness * 0.3
+            - max(height_delta, 0) * 1.0
+            + min(height_delta, 0) * 0.5
+        )
 
     def get_heuristic(self, action: dict):
         b = action["board_result"]
