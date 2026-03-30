@@ -6,6 +6,7 @@ from config import (
     P2_COMMANDS,
     BOARD_W,
     PADDING,
+    PREVIEW_W,
     FPS,
     AGENT_CAPS,
 )
@@ -33,8 +34,8 @@ class Game:
         self.p2_agent = self._load_agent(
             options["p2_agent_source"], list(P2_COMMANDS.keys())
         )
-        self.p1 = Tetris(x_offset=0, commands=P1_COMMANDS)
-        self.p2 = Tetris(x_offset=BOARD_W + PADDING, commands=P2_COMMANDS)
+        self.p1 = Tetris(x_offset=PREVIEW_W, commands=P1_COMMANDS)
+        self.p2 = Tetris(x_offset=PREVIEW_W + BOARD_W + PADDING, commands=P2_COMMANDS)
         self.p1.opponent = self.p2
         self.p2.opponent = self.p1
 
@@ -64,6 +65,8 @@ class Game:
             self.screen.fill((10, 10, 10))
             self.p1.render(self.screen, self.font_lg)
             self.p2.render(self.screen, self.font_lg)
+            self.p1.render_preview(self.screen, self.font_lg, 0)
+            self.p2.render_preview(self.screen, self.font_lg, PREVIEW_W + BOARD_W * 2 + PADDING)
             pygame.display.flip()
 
             if self._game_ended:
@@ -79,6 +82,8 @@ class Game:
                 continue
 
             print(f"{winner}  p1_score={self.p1.score}  p2_score={self.p2.score}")
+            print(f"  P1: lines={self.p1.normal_lines_cleared}  garbage_cleared={self.p1.garbage_lines_cleared}")
+            print(f"  P2: lines={self.p2.normal_lines_cleared}  garbage_cleared={self.p2.garbage_lines_cleared}")
             self._game_ended = True
             pygame.time.wait(3000)
             break

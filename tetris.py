@@ -15,6 +15,7 @@ from config import (
     BOARD_W,
     MAX_GARBAGE_HOLE,
     SCORE_TABLE,
+    PREVIEW_W,
 )
 
 
@@ -181,14 +182,46 @@ class Tetris:
                 (self.x_offset + BOARD_W // 2 - message.get_width() // 2, BOARD_H // 2),
             )
 
+    def render_preview(self, screen: pygame.surface.Surface, font: pygame.font.Font, preview_x: int):
+        """Render next piece preview at the given x position."""
+        label = font.render("NEXT", True, (200, 200, 200))
+        screen.blit(label, (preview_x + PREVIEW_W // 2 - label.get_width() // 2, 30))
+
+        box_rect = pygame.Rect(preview_x + 5, 55, PREVIEW_W - 10, PREVIEW_W - 10)
+        pygame.draw.rect(screen, (50, 50, 50), box_rect, border_radius=4)
+        pygame.draw.rect(screen, (80, 80, 80), box_rect, 1, border_radius=4)
+
+        shape, color_id = self._get_next_piece_info()
+        piece_h, piece_w = shape.shape
+        cell = 18
+        start_x = preview_x + PREVIEW_W // 2 - (piece_w * cell) // 2
+        start_y = 55 + (PREVIEW_W - 10) // 2 - (piece_h * cell) // 2
+
+        for r, c in np.argwhere(shape):
+            rect = pygame.Rect(
+                start_x + c * cell,
+                start_y + r * cell,
+                cell - 1,
+                cell - 1,
+            )
+            pygame.draw.rect(screen, COLORS[color_id], rect)
+
+    def _get_next_piece_info(self):
+        """Peek at next piece in bag without removing it."""
+        if not self.bag:
+            return self.piece.shape, self.piece.color_id
+        return self.bag[-1]
+
     def _respawn_piece(self) -> Piece:
         """Respawn a new piece once we start the game or place a piece"""
         # 7-bag system means we put all unique pieces into the bag and shuffle it
         # each time we take one piece from the bag until it's empty,
         # then we refill and shuffle again
-        if not self.bag:
-            self.bag = TETROMINOS.copy()
-            random.shuffle(self.bag)
+        # Keep 2 bags so preview always has a piece to show
+        if len(self.bag) < 7:
+            new_bag = TETROMINOS.copy()
+            random.shuffle(new_bag)
+            self.bag = new_bag + self.bag
 
         shape, color_id = self.bag.pop()
         return Piece(shape, color_id)
@@ -282,11 +315,6 @@ class Tetris:
 
         return line_cleared, new_board, new_cell_colors
 
-    # NOTE: I think we need to include the number of lines the opponent current have into our reward
-    # The intuition is if we can end the opponent with 1 or 2 extra garbage lines, it should
-    # be rewarded at maximum.
-    # Also, the training agent should simulate the action itself. It's the not responsibility of Tetris.
-
     def _get_heights(self) -> np.ndarray:
         """Get the height of the board"""
         heights = np.zeros(COLS, dtype=int)
@@ -327,6 +355,3 @@ class Tetris:
                     if not self.board[row][col]:
                         holes += 1
         return holes
-
-    # TODO: ADD MORE IF NEEDED
-    # not for now

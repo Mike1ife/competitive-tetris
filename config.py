@@ -2,13 +2,15 @@ import pygame
 import numpy as np
 
 AGENT_SOURCE = "tetris_dqn.keras"
+AGENT_SOURCE_2 = "tetris_dqn_v3.keras"
 
 CELL_SIZE = 30  # cell size
 ROWS, COLS = 20, 10  # row cell num, col cell num
 BOARD_W = COLS * CELL_SIZE  # board width
 BOARD_H = ROWS * CELL_SIZE  # board height
 PADDING = 20  # distance between two boards
-WIN_W = BOARD_W * 2 + PADDING  # window width
+PREVIEW_W = 80  # width of next piece preview panel
+WIN_W = BOARD_W * 2 + PADDING + PREVIEW_W * 2  # window width (preview on each side)
 WIN_H = BOARD_H  # window height
 FPS = 60
 FALL_INTERVAL = 500  # drop rate = 500 ms

@@ -1,5 +1,5 @@
 import pygame
-from config import WIN_W, FPS, COLORS, AGENT_SOURCE
+from config import WIN_W, FPS, COLORS, AGENT_SOURCE, AGENT_SOURCE_2
 
 
 class Button:
@@ -101,8 +101,12 @@ def run_home(
                         for d, difficulty_btn in difficulty_btns.items():
                             difficulty_btn.selected = d == difficulty
                     elif btn.tag == "start":
-                        p1_agent_source = None if mode != "ava" else AGENT_SOURCE
-                        p2_agent_source = None if mode == "pvp" else AGENT_SOURCE
+                        if mode == "ava":
+                            p1_agent_source = AGENT_SOURCE
+                            p2_agent_source = AGENT_SOURCE_2
+                        else:
+                            p1_agent_source = None if mode != "ava" else AGENT_SOURCE
+                            p2_agent_source = None if mode == "pvp" else AGENT_SOURCE
                         return {
                             "p1_agent_source": p1_agent_source,
                             "p2_agent_source": p2_agent_source,
