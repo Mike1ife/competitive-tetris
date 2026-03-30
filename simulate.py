@@ -2,19 +2,20 @@
 
 import pygame
 import numpy as np
-from config import ROWS, COLS, P1_COMMANDS, P2_COMMANDS, AGENT_SOURCE, AGENT_SOURCE_2
+from config import ROWS, COLS, P1_COMMANDS, P2_COMMANDS, AGENT1_SOURCE, AGENT2_SOURCE
 from tetris import Tetris
-from models.agent import Agent
+from agents.agent import Agent
 
 NUM_GAMES = 100
 MAX_PIECES = 2000
+
 
 def simulate():
     pygame.init()
     pygame.display.set_mode((1, 1))
 
-    p1_agent = Agent(AGENT_SOURCE, list(P1_COMMANDS.keys()))
-    p2_agent = Agent(AGENT_SOURCE_2, list(P2_COMMANDS.keys()))
+    p1_agent = Agent(AGENT1_SOURCE, list(P1_COMMANDS.keys()))
+    p2_agent = Agent(AGENT2_SOURCE, list(P2_COMMANDS.keys()))
 
     p1_wins = 0
     p2_wins = 0
@@ -42,8 +43,7 @@ def simulate():
             # P1 acts
             if not p1.game_over:
                 cmds = p1_agent.get_command_sequence(
-                    p1.board.copy(), p1.piece,
-                    p2.get_game_state()["aggregate_height"]
+                    p1.board.copy(), p1.piece, p2.get_game_state()["aggregate_height"]
                 )
                 for cmd in cmds:
                     p1.execute(cmd)
@@ -51,8 +51,7 @@ def simulate():
             # P2 acts
             if not p2.game_over:
                 cmds = p2_agent.get_command_sequence(
-                    p2.board.copy(), p2.piece,
-                    p1.get_game_state()["aggregate_height"]
+                    p2.board.copy(), p2.piece, p1.get_game_state()["aggregate_height"]
                 )
                 for cmd in cmds:
                     p2.execute(cmd)
@@ -92,13 +91,19 @@ def simulate():
     print("\n" + "=" * 60)
     print("SUMMARY")
     print("=" * 60)
-    print(f"Games: {NUM_GAMES}  |  P1 wins: {p1_wins}  P2 wins: {p2_wins}  Draws: {draws}")
-    print(f"P1 win rate: {p1_wins / NUM_GAMES * 100:.1f}%  |  P2 win rate: {p2_wins / NUM_GAMES * 100:.1f}%")
+    print(
+        f"Games: {NUM_GAMES}  |  P1 wins: {p1_wins}  P2 wins: {p2_wins}  Draws: {draws}"
+    )
+    print(
+        f"P1 win rate: {p1_wins / NUM_GAMES * 100:.1f}%  |  P2 win rate: {p2_wins / NUM_GAMES * 100:.1f}%"
+    )
     print()
     print(f"{'':12s}  {'P1':>10s}  {'P2':>10s}")
     print(f"{'Avg lines':12s}  {np.mean(p1_lines):10.1f}  {np.mean(p2_lines):10.1f}")
     print(f"{'Max lines':12s}  {np.max(p1_lines):10d}  {np.max(p2_lines):10d}")
-    print(f"{'Avg garbage':12s}  {np.mean(p1_garbage):10.1f}  {np.mean(p2_garbage):10.1f}")
+    print(
+        f"{'Avg garbage':12s}  {np.mean(p1_garbage):10.1f}  {np.mean(p2_garbage):10.1f}"
+    )
     print(f"{'Avg score':12s}  {np.mean(p1_scores):10.1f}  {np.mean(p2_scores):10.1f}")
     print(f"{'Max score':12s}  {np.max(p1_scores):10d}  {np.max(p2_scores):10d}")
     print()
