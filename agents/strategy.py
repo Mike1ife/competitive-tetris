@@ -68,10 +68,10 @@ class Strategy:
         return (
             garbage_send * 500
             + garbage_cleared * 100
-            - holes * 2.5
+            - holes * 4.0
             - bumpiness * 0.25
-            - max_height * 1.5
-            - max(height_delta, 0) * 0.8
+            - max_height * 3.0
+            - max(height_delta, 0) * 1.2
         )
 
     def _get_defensive_reward(
