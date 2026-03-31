@@ -10,8 +10,8 @@ class Strategy:
         }
         self.heuristic_table = {0: 0, 1: 150, 2: 400, 3: 800, 4: 1600}
         self.penalties = {
-            "neutral":   {"death": -2000, "win": 1500},
-            "offensive": {"death": -500,  "win": 1500},
+            "neutral": {"death": -2000, "win": 1500},
+            "offensive": {"death": -500, "win": 1500},
             "defensive": {"death": -2000, "win": 500},
         }
 
@@ -54,7 +54,8 @@ class Strategy:
         bumpiness: int,
         height_delta: int,
     ):
-        line_rewards = {0: 0, 1: 200, 2: 600, 3: 1200, 4: 2400}
+        # No extra rewards for one-line clear since it doesn't send garbage
+        line_rewards = {0: 0, 1: 100, 2: 600, 3: 1200, 4: 2400}
         return (
             line_rewards.get(normal_cleared, 2400)
             + garbage_cleared * 100

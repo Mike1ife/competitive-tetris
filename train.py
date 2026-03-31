@@ -41,13 +41,17 @@ EPSILON_STOP_EP = 2000
 REPLAY_START = 1000
 TRAIN_EPISODES = 7500
 TARGET_UPDATE = 200
-STRATEGY = "neutral"
+STRATEGY = "offensive"  # "neutral" / "offensive" / "defensive"
 SAVE_PATH = "./models/tetris_dqn.keras"
 
 
 def make_state(
-    board: np.ndarray, lines_cleared: int, piece: Piece, opp_agg: int,
-    hold_piece=None, hold_used=False
+    board: np.ndarray,
+    lines_cleared: int,
+    piece: Piece,
+    opp_agg: int,
+    hold_piece=None,
+    hold_used=False,
 ) -> np.ndarray:
     """Build a state vector from post-action board features."""
     heights = np.zeros(COLS, dtype=int)
@@ -90,9 +94,7 @@ def build_model():
             keras.layers.Dense(1, activation="linear"),
         ]
     )
-    model.compile(
-        loss="huber", optimizer=keras.optimizers.Adam(learning_rate=1e-3)
-    )
+    model.compile(loss="huber", optimizer=keras.optimizers.Adam(learning_rate=1e-3))
     return model
 
 
@@ -111,16 +113,42 @@ class DQNAgent:
             return random.choice(actions)
         states = np.array(
             [
-                make_state(a["board_result"], a["lines_cleared"], piece, opp_agg, hold_piece, hold_used)
+                make_state(
+                    a["board_result"],
+                    a["lines_cleared"],
+                    piece,
+                    opp_agg,
+                    hold_piece,
+                    hold_used,
+                )
                 for a in actions
             ]
         )
         qs = self.model(states, training=False).numpy().flatten()
         return actions[int(np.argmax(qs))]
 
-    def remember(self, action_state, reward, done, next_board, next_piece, opp_agg, hold_piece, hold_used):
+    def remember(
+        self,
+        action_state,
+        reward,
+        done,
+        next_board,
+        next_piece,
+        opp_agg,
+        hold_piece,
+        hold_used,
+    ):
         self.memory.append(
-            (action_state, reward, done, next_board, next_piece, opp_agg, hold_piece, hold_used)
+            (
+                action_state,
+                reward,
+                done,
+                next_board,
+                next_piece,
+                opp_agg,
+                hold_piece,
+                hold_used,
+            )
         )
 
     def train(self, pf: Pathfinder):
@@ -128,11 +156,22 @@ class DQNAgent:
             return
         batch = random.sample(self.memory, min(BATCH_SIZE, len(self.memory)))
         x, y = [], []
-        for action_state, reward, done, next_board, next_piece, opp_agg, hold_piece, hold_used in batch:
+        for (
+            action_state,
+            reward,
+            done,
+            next_board,
+            next_piece,
+            opp_agg,
+            hold_piece,
+            hold_used,
+        ) in batch:
             if done:
                 target = reward
             else:
-                next_actions = pf.get_actions(next_board, next_piece, hold_piece, hold_used)
+                next_actions = pf.get_actions(
+                    next_board, next_piece, hold_piece, hold_used
+                )
                 if not next_actions:
                     target = reward
                 else:
@@ -189,14 +228,18 @@ def play_episode(
         opp_agg = p2.get_game_state()["aggregate_height"]
         total_before = p1.normal_lines_cleared
         garbage_before = p1.garbage_lines_cleared
-        chosen = agent.best_action(actions, p1.piece, opp_agg, p1.hold_piece, p1.hold_used)
+        chosen = agent.best_action(
+            actions, p1.piece, opp_agg, p1.hold_piece, p1.hold_used
+        )
 
         for cmd in chosen["sequence"]:
             p1.execute(cmd)
         pygame.event.clear()
 
         # heuristic opponent step
-        opp_acts = pf.get_actions(p2.board.copy(), p2.piece, p2.hold_piece, p2.hold_used)
+        opp_acts = pf.get_actions(
+            p2.board.copy(), p2.piece, p2.hold_piece, p2.hold_used
+        )
         if opp_acts:
             for cmd in max(opp_acts, key=strategy.get_heuristic)["sequence"]:
                 p2.execute(cmd)
@@ -228,8 +271,12 @@ def play_episode(
         done = p1.game_over or p2.game_over
 
         action_state = make_state(
-            chosen["board_result"], normal_cleared, p1.piece, opp_agg_after,
-            p1.hold_piece, p1.hold_used,
+            chosen["board_result"],
+            normal_cleared,
+            p1.piece,
+            opp_agg_after,
+            p1.hold_piece,
+            p1.hold_used,
         )
         agent.remember(
             action_state,
