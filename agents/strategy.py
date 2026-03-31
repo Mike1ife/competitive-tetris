@@ -1,4 +1,4 @@
-from config import ROWS, COLS, SCORE_TABLE
+from config import ROWS, COLS
 
 
 class Strategy:
