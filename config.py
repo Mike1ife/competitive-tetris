@@ -1,8 +1,13 @@
 import pygame
 import numpy as np
 
+<<<<<<< HEAD
 AGENT1_SOURCE = "tetris_dqn_defensive_v3.keras"
 AGENT2_SOURCE = "tetris_dqn_offensive_v2.keras"
+=======
+AGENT1_SOURCE = "tetris_dqn.keras"
+AGENT2_SOURCE = "tetris_dqn.keras"
+>>>>>>> 89761f86ecb0ffb2848d43998f96bda6b3985b5b
 
 CELL_SIZE = 30  # cell size
 ROWS, COLS = 20, 10  # row cell num, col cell num
