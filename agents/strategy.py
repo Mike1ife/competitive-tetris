@@ -49,6 +49,7 @@ class Strategy:
             + garbage_cleared * 150
             - holes * 3.0
             - bumpiness * 0.5
+            - max_height * 0.5
             - max(height_delta, 0) * 2.0
             + min(height_delta, 0) * 0.5
         )

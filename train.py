@@ -39,7 +39,7 @@ EPSILON_START = 1.0
 EPSILON_MIN = 0.05
 EPSILON_STOP_EP = 2000
 REPLAY_START = 1000
-TRAIN_EPISODES = 7500
+TRAIN_EPISODES = 5000
 TARGET_UPDATE = 200
 STRATEGY = "neutral"  # "neutral" / "offensive" / "defensive"
 SAVE_PATH = "./models/tetris_dqn.keras"
@@ -137,6 +137,7 @@ class DQNAgent:
         opp_agg,
         hold_piece,
         hold_used,
+        next_piece_info,
     ):
         self.memory.append(
             (
@@ -148,6 +149,7 @@ class DQNAgent:
                 opp_agg,
                 hold_piece,
                 hold_used,
+                next_piece_info,
             )
         )
 
@@ -165,12 +167,13 @@ class DQNAgent:
             opp_agg,
             hold_piece,
             hold_used,
+            next_piece_info,
         ) in batch:
             if done:
                 target = reward
             else:
                 next_actions = pf.get_actions(
-                    next_board, next_piece, hold_piece, hold_used
+                    next_board, next_piece, hold_piece, hold_used, next_piece_info
                 )
                 if not next_actions:
                     target = reward
@@ -221,7 +224,8 @@ def play_episode(
     prev_height = p1.get_game_state()["max_height"]
     while not p1.game_over and not p2.game_over and pieces < max_pieces:
         pieces += 1
-        actions = pf.get_actions(p1.board.copy(), p1.piece, p1.hold_piece, p1.hold_used)
+        next_info = p1._get_next_piece_info()
+        actions = pf.get_actions(p1.board.copy(), p1.piece, p1.hold_piece, p1.hold_used, next_info)
         if not actions:
             break
 
@@ -236,9 +240,9 @@ def play_episode(
             p1.execute(cmd)
         pygame.event.clear()
 
-        # heuristic opponent step
+        opp_next_info = p2._get_next_piece_info()
         opp_acts = pf.get_actions(
-            p2.board.copy(), p2.piece, p2.hold_piece, p2.hold_used
+            p2.board.copy(), p2.piece, p2.hold_piece, p2.hold_used, opp_next_info
         )
         if opp_acts:
             for cmd in max(opp_acts, key=strategy.get_heuristic)["sequence"]:
@@ -288,6 +292,7 @@ def play_episode(
             opp_agg_after,
             p1.hold_piece,
             p1.hold_used,
+            p1._get_next_piece_info(),
         )
         total_reward += reward
 
@@ -321,14 +326,11 @@ def train():
         agent.train(pf)
         agent.decay_epsilon()
 
-        if ep >= 50:
+        if ep % 50 == 0:
             avg_50 = np.mean(rewards[-50:])
             if avg_50 > best_score:
                 best_score = avg_50
                 agent.save()
-
-        if ep % 50 == 0:
-            avg_50 = np.mean(rewards[-50:])
             print(
                 f"ep={ep:4d}  avg50={avg_50:7.1f}  eps={agent.epsilon:.3f}  "
                 f"best={best_score:.1f}"

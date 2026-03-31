@@ -25,7 +25,7 @@ class Decider:
             )
             for a in actions
         ])
-        qs = self.model.predict(states, verbose=0).flatten()
+        qs = self.model(states, training=False).numpy().flatten()
         return actions[int(np.argmax(qs))]["sequence"]
 
     def _placed_piece(self, action, piece, hold_piece, next_piece_info):
