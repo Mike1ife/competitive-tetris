@@ -9,11 +9,12 @@ class Pathfinder:
     def __init__(self):
         pass
 
-    def get_actions(self, board: np.ndarray, piece: Piece, hold_info=None, hold_used=False) -> list:
+    def get_actions(self, board: np.ndarray, piece: Piece, hold_info=None, hold_used=False, next_piece_info=None) -> list:
         """Get all possible actions for current piece and optionally hold piece.
-        
+
         hold_info: (shape, color_id) tuple or None
         hold_used: whether hold has already been used this piece
+        next_piece_info: (shape, color_id) of next piece, used when hold slot is empty
         """
         # Actions for current piece
         actions = self._get_piece_actions(board, piece, prefix=[])
@@ -24,6 +25,11 @@ class Pathfinder:
                 hold_shape, hold_color_id = hold_info
                 hold_piece = Piece(hold_shape, hold_color_id)
                 hold_actions = self._get_piece_actions(board, hold_piece, prefix=["hold"])
+                actions.extend(hold_actions)
+            elif next_piece_info is not None:
+                next_shape, next_color_id = next_piece_info
+                next_piece = Piece(next_shape, next_color_id)
+                hold_actions = self._get_piece_actions(board, next_piece, prefix=["hold"])
                 actions.extend(hold_actions)
 
         return actions

@@ -2,7 +2,7 @@ import pygame
 import numpy as np
 
 AGENT1_SOURCE = "tetris_dqn_neutral_v2.keras"
-AGENT2_SOURCE = "tetris_dqn_neutral_v2.keras"
+AGENT2_SOURCE = "tetris_dqn_defensive_v3.keras"
 
 CELL_SIZE = 30  # cell size
 ROWS, COLS = 20, 10  # row cell num, col cell num

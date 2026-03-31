@@ -15,8 +15,8 @@ def run_headless_round(
     p1.opponent = p2
     p2.opponent = p1
 
-    p1_piece_id = None
-    p2_piece_id = None
+    p1_piece = None
+    p2_piece = None
     dt = 1000 // 60
 
     for _ in range(max_ticks):
@@ -24,25 +24,25 @@ def run_headless_round(
             break
 
         if not p1.game_over:
-            cid = id(p1.piece)
-            if cid != p1_piece_id:
-                p1_piece_id = cid
+            if p1.piece is not p1_piece:
+                p1_piece = p1.piece
                 cmds = p1_agent.get_command_sequence(
                     p1.board.copy(), p1.piece,
                     p2.get_game_state()["max_height"],
                     p1.hold_piece, p1.hold_used,
+                    p1._get_next_piece_info(),
                 )
                 for cmd in cmds:
                     p1.execute(cmd)
 
         if not p2.game_over:
-            cid = id(p2.piece)
-            if cid != p2_piece_id:
-                p2_piece_id = cid
+            if p2.piece is not p2_piece:
+                p2_piece = p2.piece
                 cmds = p2_agent.get_command_sequence(
                     p2.board.copy(), p2.piece,
                     p1.get_game_state()["max_height"],
                     p2.hold_piece, p2.hold_used,
+                    p2._get_next_piece_info(),
                 )
                 for cmd in cmds:
                     p2.execute(cmd)

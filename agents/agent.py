@@ -8,6 +8,6 @@ class Agent:
         self.decider = Decider(source)
         self.pathfinder = Pathfinder()
 
-    def get_command_sequence(self, board, piece, opp_agg, hold_info=None, hold_used=False):
-        actions = self.pathfinder.get_actions(board, piece, hold_info, hold_used)
-        return self.decider.get_sequence(actions, piece, opp_agg, hold_info, hold_used)
+    def get_command_sequence(self, board, piece, opp_agg, hold_info=None, hold_used=False, next_piece_info=None):
+        actions = self.pathfinder.get_actions(board, piece, hold_info, hold_used, next_piece_info)
+        return self.decider.get_sequence(actions, piece, opp_agg, hold_info, hold_used, next_piece_info)

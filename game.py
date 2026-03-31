@@ -45,8 +45,8 @@ class Game:
 
         self.p1_pending = []
         self.p2_pending = []
-        self.p1_piece_id = None
-        self.p2_piece_id = None
+        self._p1_piece = None
+        self._p2_piece = None
         self._p1_last_piece_time = 0
         self._p2_last_piece_time = 0
         self._game_ended = False
@@ -156,8 +156,8 @@ class Game:
             self._ava_done = True
         else:
             self._init_boards()
-            self.p1_piece_id = None
-            self.p2_piece_id = None
+            self._p1_piece = None
+            self._p2_piece = None
             self._p1_last_piece_time = 0
             self._p2_last_piece_time = 0
 
@@ -198,17 +198,17 @@ class Game:
         now = pygame.time.get_ticks()
 
         if self.p1_agent and not self.p1.game_over:
-            current_id = id(self.p1.piece)
-            if current_id != self.p1_piece_id and (
+            if self.p1.piece is not self._p1_piece and (
                 now - self._p1_last_piece_time >= self.agent_cap
             ):
-                self.p1_piece_id = current_id
+                self._p1_piece = self.p1.piece
                 self.p1_pending = self.p1_agent.get_command_sequence(
                     self.p1.board.copy(),
                     self.p1.piece,
                     self.p2.get_game_state()["max_height"],
                     self.p1.hold_piece,
                     self.p1.hold_used,
+                    self.p1._get_next_piece_info(),
                 )
                 self._p1_last_piece_time = now
                 for cmd in self.p1_pending:
@@ -216,17 +216,17 @@ class Game:
                 self.p1_pending = []
 
         if self.p2_agent and not self.p2.game_over:
-            current_id = id(self.p2.piece)
-            if current_id != self.p2_piece_id and (
+            if self.p2.piece is not self._p2_piece and (
                 now - self._p2_last_piece_time >= self.agent_cap
             ):
-                self.p2_piece_id = current_id
+                self._p2_piece = self.p2.piece
                 self.p2_pending = self.p2_agent.get_command_sequence(
                     self.p2.board.copy(),
                     self.p2.piece,
                     self.p1.get_game_state()["max_height"],
                     self.p2.hold_piece,
                     self.p2.hold_used,
+                    self.p2._get_next_piece_info(),
                 )
                 self._p2_last_piece_time = now
                 for cmd in self.p2_pending:

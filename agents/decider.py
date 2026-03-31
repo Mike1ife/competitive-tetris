@@ -13,13 +13,29 @@ class Decider:
         self.model = keras.models.load_model(f"./models/{source}")
 
     def get_sequence(self, actions: list, piece: Piece, opp_agg: int = 0,
-                     hold_piece=None, hold_used=False) -> list:
+                     hold_piece=None, hold_used=False, next_piece_info=None) -> list:
         if not actions:
             return []
 
-        states = np.array([self._make_state(a, piece, opp_agg, hold_piece, hold_used) for a in actions])
+        states = np.array([
+            self._make_state(
+                a,
+                self._placed_piece(a, piece, hold_piece, next_piece_info),
+                opp_agg, hold_piece, hold_used
+            )
+            for a in actions
+        ])
         qs = self.model.predict(states, verbose=0).flatten()
         return actions[int(np.argmax(qs))]["sequence"]
+
+    def _placed_piece(self, action, piece, hold_piece, next_piece_info):
+        """Return the Piece that was actually placed for this action."""
+        if action["sequence"] and action["sequence"][0] == "hold":
+            if hold_piece is not None:
+                return Piece(hold_piece[0], hold_piece[1])
+            elif next_piece_info is not None:
+                return Piece(next_piece_info[0], next_piece_info[1])
+        return piece
 
     def _make_state(self, action: dict, piece: Piece, opp_agg: int,
                     hold_piece=None, hold_used=False) -> np.ndarray:
