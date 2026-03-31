@@ -2,7 +2,7 @@ import pygame
 import numpy as np
 
 AGENT1_SOURCE = "tetris_dqn_neutral.keras"
-AGENT2_SOURCE = "tetris_dqn_defensive_v3.keras"
+AGENT2_SOURCE = "tetris_dqn_neutral.keras"
 
 CELL_SIZE = 30  # cell size
 ROWS, COLS = 20, 10  # row cell num, col cell num
@@ -85,6 +85,8 @@ P1_COMMANDS = {
     "right": (pygame.K_d, "d"),
     "down": (pygame.K_s, "s"),
     "rotate": (pygame.K_w, "w"),
+    "rotate_left": (pygame.K_z, "z"),
+    "rotate_180": (pygame.K_x, "x"),
     "hold": (pygame.K_q, "q"),
     "drop": (pygame.K_SPACE, "p"),
 }
@@ -94,6 +96,8 @@ P2_COMMANDS = {
     "right": (pygame.K_RIGHT, "r"),
     "down": (pygame.K_DOWN, "n"),
     "rotate": (pygame.K_UP, "u"),
+    "rotate_left": (pygame.K_PERIOD, "."),
+    "rotate_180": (pygame.K_COMMA, ","),
     "hold": (pygame.K_RSHIFT, "/"),
     "drop": (pygame.K_KP_0, "0"),
 }

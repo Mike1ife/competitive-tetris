@@ -165,13 +165,17 @@ class Tetris:
         ):
             piece.col += 1
         elif command == "rotate":
-            rotated_shape = self._try_rotate(piece, piece.row, piece.col)
-            if rotated_shape is not None:
-                new_shape, new_row, new_col = rotated_shape
-                piece.shape = new_shape
-                piece.row = new_row
-                piece.col = new_col
-                piece.rotation_id = (piece.rotation_id + 1) % 4
+            result = self._try_rotate(piece, piece.row, piece.col, 1)
+            if result is not None:
+                piece.shape, piece.row, piece.col, piece.rotation_id = result
+        elif command == "rotate_left":
+            result = self._try_rotate(piece, piece.row, piece.col, 3)
+            if result is not None:
+                piece.shape, piece.row, piece.col, piece.rotation_id = result
+        elif command == "rotate_180":
+            result = self._try_rotate(piece, piece.row, piece.col, 2)
+            if result is not None:
+                piece.shape, piece.row, piece.col, piece.rotation_id = result
         elif command == "hold":
             self.hold()
         elif command == "drop":
@@ -382,18 +386,27 @@ class Tetris:
         ]
 
     def _try_rotate(
-        self, piece: Piece, row: int, col: int
-    ) -> tuple[np.ndarray, int, int] | None:
+        self, piece: Piece, row: int, col: int, times: int = 1
+    ) -> tuple[np.ndarray, int, int, int] | None:
         shape = piece.shape
-        rotated_shape = np.rot90(shape, axes=(1, 0))
-        for drow, dcol in self._get_kick_offsets(
-            piece.color_id, piece.rotation_id, (piece.rotation_id + 1) % 4
-        ):
-            new_row = row + drow
-            new_col = col + dcol
-            if self._can_move_to(rotated_shape, new_row, new_col):
-                return rotated_shape, new_row, new_col
-        return None
+        current_rot = piece.rotation_id
+        for _ in range(times):
+            rotated_shape = np.rot90(shape, axes=(1, 0))
+            target_rot = (current_rot + 1) % 4
+            kicked = False
+            for drow, dcol in self._get_kick_offsets(piece.color_id, current_rot, target_rot):
+                new_row = row + drow
+                new_col = col + dcol
+                if self._can_move_to(rotated_shape, new_row, new_col):
+                    shape = rotated_shape
+                    row = new_row
+                    col = new_col
+                    current_rot = target_rot
+                    kicked = True
+                    break
+            if not kicked:
+                return None
+        return shape, row, col, current_rot
 
     def _place(self):
         """Place a piece"""
@@ -436,9 +449,9 @@ class Tetris:
         line_cleared = len(complete_lines) - garbage_line_count
         self.normal_lines_cleared += line_cleared
         self.garbage_lines_cleared += garbage_line_count
-        total_cleared = len(complete_lines)                     
-        if total_cleared in self.clear_distribution:            
-            self.clear_distribution[total_cleared] += 1         
+        total_cleared = len(complete_lines)
+        if total_cleared in self.clear_distribution:
+            self.clear_distribution[total_cleared] += 1
         self.score += SCORE_TABLE.get(line_cleared, 800)
 
         remaining_lines = [row for row in range(ROWS) if row not in complete_lines]
