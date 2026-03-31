@@ -54,6 +54,7 @@ class Tetris:
         self.score = 0
         self.normal_lines_cleared = 0
         self.garbage_lines_cleared = 0
+        self.clear_distribution = {1: 0, 2: 0, 3: 0, 4: 0}
         self._fall_timer = 0
         self.accelerate = False
 
@@ -435,6 +436,9 @@ class Tetris:
         line_cleared = len(complete_lines) - garbage_line_count
         self.normal_lines_cleared += line_cleared
         self.garbage_lines_cleared += garbage_line_count
+        total_cleared = len(complete_lines)                     
+        if total_cleared in self.clear_distribution:            
+            self.clear_distribution[total_cleared] += 1         
         self.score += SCORE_TABLE.get(line_cleared, 800)
 
         remaining_lines = [row for row in range(ROWS) if row not in complete_lines]

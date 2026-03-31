@@ -1,13 +1,8 @@
 import pygame
 import numpy as np
 
-<<<<<<< HEAD
-AGENT1_SOURCE = "tetris_dqn_defensive_v3.keras"
-AGENT2_SOURCE = "tetris_dqn_offensive_v2.keras"
-=======
-AGENT1_SOURCE = "tetris_dqn.keras"
-AGENT2_SOURCE = "tetris_dqn.keras"
->>>>>>> 89761f86ecb0ffb2848d43998f96bda6b3985b5b
+AGENT1_SOURCE = "tetris_dqn_neutral.keras"
+AGENT2_SOURCE = "tetris_dqn_neutral.keras"
 
 CELL_SIZE = 30  # cell size
 ROWS, COLS = 20, 10  # row cell num, col cell num
@@ -16,14 +11,14 @@ BOARD_H = ROWS * CELL_SIZE  # board height
 PADDING = 20  # distance between two boards
 PREVIEW_W = 80  # width of next piece preview panel
 WIN_W = BOARD_W * 2 + PADDING + PREVIEW_W * 2  # window width (preview on each side)
-WIN_H = BOARD_H  # window height
+WIN_H = BOARD_H + 40  # window height (extra space for stats)
 FPS = 60
 FALL_INTERVAL = 500  # drop rate = 500 ms
 ACCELERATE_INTERVAL = 50  # accelerate rate (pressing down) = 50 ms
 
 # DAS/ARR for left/right movement (ms)
 DAS = 167  # delay before auto-shift starts
-ARR = 33  # interval between repeated moves once auto-shift active (0 = instant)
+ARR = 33   # interval between repeated moves once auto-shift active (0 = instant)
 
 AGENT_CAPS = {"easy": 1000, "medium": 500, "hard": 333, "none": 111}
 

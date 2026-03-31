@@ -4,7 +4,6 @@ from config import WIN_W, FPS, COLORS, AGENT1_SOURCE, AGENT2_SOURCE
 
 class Button:
     def __init__(self, rect: tuple, label: str, tag: str = None):
-        # rect: (left, top, width, height)
         self.rect = pygame.Rect(rect)
         self.label = label
         self.tag = tag
@@ -28,8 +27,8 @@ class Button:
             bg_color = self._BUTTON_COLOR
             border_color = self._BORDER_COLOR
 
-        pygame.draw.rect(screen, bg_color, self.rect, border_radius=8)  # background
-        pygame.draw.rect(screen, border_color, self.rect, 1, border_radius=8)  # border
+        pygame.draw.rect(screen, bg_color, self.rect, border_radius=8)
+        pygame.draw.rect(screen, border_color, self.rect, 1, border_radius=8)
 
         text = font.render(self.label, True, self._TEXT_COLOR)
         screen.blit(text, text.get_rect(center=self.rect.center))
@@ -38,7 +37,7 @@ class Button:
         if event.type == pygame.MOUSEMOTION:
             self.hovered = self.rect.collidepoint(event.pos)
         if event.type == pygame.MOUSEBUTTONDOWN and self.rect.collidepoint(event.pos):
-            return True  # We don't set selected here because we also want to cancel other buttons' selected
+            return True
         return False
 
 
@@ -47,8 +46,8 @@ def run_home(
     clock: pygame.time.Clock,
     font_lg: pygame.font.Font,
     font_sm: pygame.font.Font,
+    last_stats: dict = None,
 ) -> dict:
-    # rect: (left, top, width, height)
     btn_pva = Button((WIN_W // 2 - 160, 160, 320, 52), "Player vs Agent", tag="pva")
     btn_pvp = Button((WIN_W // 2 - 160, 228, 320, 52), "Player vs Player", tag="pvp")
     btn_ava = Button((WIN_W // 2 - 160, 296, 320, 52), "Agent vs Agent", tag="ava")
@@ -70,8 +69,6 @@ def run_home(
         clock.tick(FPS)
 
         offset_y = 50
-        # update layout based on mode
-        # if "pva", then we render all stuff 50 lower
         if mode == "pva":
             btn_pvp.rect.topleft = (WIN_W // 2 - 160, 228 + offset_y)
             btn_ava.rect.topleft = (WIN_W // 2 - 160, 296 + offset_y)
@@ -138,5 +135,22 @@ def run_home(
         for i, hint in enumerate(hints):
             s = font_sm.render(hint, True, (140, 140, 140))
             screen.blit(s, s.get_rect(center=(WIN_W // 2, hints_y + i * 22)))
+
+        if last_stats:
+            stats_y = hints_y + 60
+            winner_color = (255, 255, 100) if last_stats["winner"] else (180, 180, 180)
+            winner_text = last_stats["winner"] or "No result"
+            s = font_sm.render(f"Last game: {winner_text}", True, winner_color)
+            screen.blit(s, s.get_rect(center=(WIN_W // 2, stats_y)))
+
+            p1c = last_stats["p1_clears"]
+            p2c = last_stats["p2_clears"]
+            stat_lines = [
+                f"P1: {last_stats['p1_score']} pts  {last_stats['p1_lines']} lines  T={p1c.get(4,0)} t={p1c.get(3,0)} d={p1c.get(2,0)} s={p1c.get(1,0)}",
+                f"P2: {last_stats['p2_score']} pts  {last_stats['p2_lines']} lines  T={p2c.get(4,0)} t={p2c.get(3,0)} d={p2c.get(2,0)} s={p2c.get(1,0)}",
+            ]
+            for i, line in enumerate(stat_lines):
+                s = font_sm.render(line, True, (160, 160, 160))
+                screen.blit(s, s.get_rect(center=(WIN_W // 2, stats_y + 22 + i * 20)))
 
         pygame.display.flip()
