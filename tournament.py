@@ -152,9 +152,16 @@ def run_double_round_robin(players: dict[str, str], rounds_per_matchup: int = 1)
 
 if __name__ == "__main__":
     players = {
+<<<<<<< HEAD
         "p1": "tetris_dqn_neutral_v1.keras",
         "p2": "tetris_dqn_defensive_v1.keras",
         "p3": "tetris_dqn_defensive_v2.keras",
         "p4": "tetris_dqn_defensive_v3.keras",
+=======
+        "p1": "tetris_dqn_neutral.keras",
+        "p2": "tetris_dqn_offensive_v1.keras",
+        "p3": "tetris_dqn_defensive_v1.keras",
+        "p4": "tetris_dqn_defensive_v2.keras",
+>>>>>>> 5bae8b43c11ad43de895cf38bf090dac0d9cbb6b
     }
     run_double_round_robin(players, rounds_per_matchup=5)
