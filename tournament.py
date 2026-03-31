@@ -7,7 +7,7 @@ from agents.agent import Agent
 
 
 def run_headless_round(
-    p1_agent: Agent, p2_agent: Agent, max_ticks: int = 20000
+    p1_agent: Agent, p2_agent: Agent, max_ticks: int = 20000, max_pieces: int = 500
 ) -> dict:
     """Simulate one full game between two agents without any rendering."""
     p1 = Tetris(x_offset=0, commands=P1_COMMANDS)
@@ -17,36 +17,44 @@ def run_headless_round(
 
     p1_piece = None
     p2_piece = None
+    p1_pieces = 0
+    p2_pieces = 0
     dt = 1000 // 60
 
     for _ in range(max_ticks):
-        if p1.game_over and p2.game_over:
+        if p1.game_over or p2.game_over:
+            break
+        if p1_pieces >= max_pieces and p2_pieces >= max_pieces:
             break
 
         if not p1.game_over:
             if p1.piece is not p1_piece:
                 p1_piece = p1.piece
-                cmds = p1_agent.get_command_sequence(
-                    p1.board.copy(), p1.piece,
-                    p2.get_game_state()["max_height"],
-                    p1.hold_piece, p1.hold_used,
-                    p1._get_next_piece_info(),
-                )
-                for cmd in cmds:
-                    p1.execute(cmd)
+                p1_pieces += 1
+                if p1_pieces <= max_pieces:
+                    cmds = p1_agent.get_command_sequence(
+                        p1.board.copy(), p1.piece,
+                        p2.get_game_state()["max_height"],
+                        p1.hold_piece, p1.hold_used,
+                        p1._get_next_piece_info(),
+                    )
+                    for cmd in cmds:
+                        p1.execute(cmd)
                 pygame.event.clear()
 
         if not p2.game_over:
             if p2.piece is not p2_piece:
                 p2_piece = p2.piece
-                cmds = p2_agent.get_command_sequence(
-                    p2.board.copy(), p2.piece,
-                    p1.get_game_state()["max_height"],
-                    p2.hold_piece, p2.hold_used,
-                    p2._get_next_piece_info(),
-                )
-                for cmd in cmds:
-                    p2.execute(cmd)
+                p2_pieces += 1
+                if p2_pieces <= max_pieces:
+                    cmds = p2_agent.get_command_sequence(
+                        p2.board.copy(), p2.piece,
+                        p1.get_game_state()["max_height"],
+                        p2.hold_piece, p2.hold_used,
+                        p2._get_next_piece_info(),
+                    )
+                    for cmd in cmds:
+                        p2.execute(cmd)
                 pygame.event.clear()
 
         p1.update(dt)
@@ -144,9 +152,9 @@ def run_double_round_robin(players: dict[str, str], rounds_per_matchup: int = 1)
 
 if __name__ == "__main__":
     players = {
-        "p1": "tetris_dqn_neutral.keras",
-        "p2": "tetris_dqn_offensive_v1.keras",
-        "p3": "tetris_dqn_defensive_v3.keras",
-        "p4": "tetris_dqn_defensive_v2.keras",
+        "p1": "tetris_dqn_neutral_v1.keras",
+        "p2": "tetris_dqn_defensive_v1.keras",
+        "p3": "tetris_dqn_defensive_v2.keras",
+        "p4": "tetris_dqn_defensive_v3.keras",
     }
     run_double_round_robin(players, rounds_per_matchup=5)
