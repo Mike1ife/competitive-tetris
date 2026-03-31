@@ -41,7 +41,7 @@ EPSILON_STOP_EP = 2000
 REPLAY_START = 1000
 TRAIN_EPISODES = 7500
 TARGET_UPDATE = 200
-STRATEGY = "offensive"  # "neutral" / "offensive" / "defensive"
+STRATEGY = "neutral"  # "neutral" / "offensive" / "defensive"
 SAVE_PATH = "./models/tetris_dqn.keras"
 
 
