@@ -258,6 +258,7 @@ def play_episode(
             garbage_cleared,
             gs["holes"],
             gs["bumpiness"],
+            gs["aggregate_height"],
             height_delta,
         )
 

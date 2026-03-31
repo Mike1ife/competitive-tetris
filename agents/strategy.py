@@ -22,10 +22,16 @@ class Strategy:
         garbage_cleared: int,
         holes: int,
         bumpiness: int,
+        aggregate_height: int,
         height_delta: int,
     ):
         return self.strategies[strategy_name](
-            normal_cleared, garbage_cleared, holes, bumpiness, height_delta
+            normal_cleared,
+            garbage_cleared,
+            holes,
+            bumpiness,
+            aggregate_height,
+            height_delta,
         )
 
     def _get_neutral_reward(
@@ -34,6 +40,7 @@ class Strategy:
         garbage_cleared: int,
         holes: int,
         bumpiness: int,
+        aggregate_height: int,
         height_delta: int,
     ):
         line_rewards = {0: 0, 1: 0, 2: 500, 3: 1200, 4: 4000}
@@ -52,16 +59,19 @@ class Strategy:
         garbage_cleared: int,
         holes: int,
         bumpiness: int,
+        aggregate_height: int,
         height_delta: int,
     ):
-        # No extra rewards for one-line clear since it doesn't send garbage
-        line_rewards = {0: 0, 1: 100, 2: 600, 3: 1200, 4: 2400}
+        attack_table = {0: 0, 1: 0, 2: 1, 3: 2, 4: 4}
+        # prioritize garbage instead of line clear (subtile different)
+        garbage_send = attack_table.get(normal_cleared, 4)
         return (
-            line_rewards.get(normal_cleared, 2400)
+            garbage_send * 500
             + garbage_cleared * 100
-            - holes * 0.5
-            - bumpiness * 0.1
-            - max(height_delta, 0) * 0.3
+            - holes * 2.5
+            - bumpiness * 0.25
+            - aggregate_height * 1.5
+            - max(height_delta, 0) * 0.8
         )
 
     def _get_defensive_reward(
@@ -70,6 +80,7 @@ class Strategy:
         garbage_cleared: int,
         holes: int,
         bumpiness: int,
+        aggregate_height: int,
         height_delta: int,
     ):
         line_rewards = {0: 0, 1: 100, 2: 200, 3: 400, 4: 800}
