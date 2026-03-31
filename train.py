@@ -321,13 +321,16 @@ def train():
         agent.train(pf)
         agent.decay_epsilon()
 
-        if total_reward > best_score:
-            best_score = total_reward
-            agent.save()
+        if ep >= 50:
+            avg_50 = np.mean(rewards[-50:])
+            if avg_50 > best_score:
+                best_score = avg_50
+                agent.save()
 
         if ep % 50 == 0:
+            avg_50 = np.mean(rewards[-50:])
             print(
-                f"ep={ep:4d}  reward={total_reward:7.1f}  eps={agent.epsilon:.3f}  "
+                f"ep={ep:4d}  avg50={avg_50:7.1f}  eps={agent.epsilon:.3f}  "
                 f"best={best_score:.1f}"
             )
         if ep % 200 == 0:
