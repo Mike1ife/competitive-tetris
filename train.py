@@ -32,17 +32,18 @@ NUM_PIECES = len(TETROMINOS)  # 7
 # board features(4) + current piece one-hot(7) + hold piece one-hot(7) + opp height(1) + hold_available(1)
 STATE_SIZE = 4 + NUM_PIECES + NUM_PIECES + 1 + 1
 MEM_SIZE = 20000
-BATCH_SIZE = 64
+BATCH_SIZE = 128
+MAX_PIECES = 500
 DISCOUNT = 0.95
 EPOCHS = 1
 EPSILON_START = 1.0
 EPSILON_MIN = 0.05
-EPSILON_STOP_EP = 2000
+EPSILON_STOP_EP = 1500
 REPLAY_START = 1000
-TRAIN_EPISODES = 5000
+TRAIN_EPISODES = 2000
 TARGET_UPDATE = 200
-STRATEGY = "neutral"  # "neutral" / "offensive" / "defensive"
-SAVE_PATH = "./models/tetris_dqn.keras"
+STRATEGY = "offensive"  # "neutral" / "offensive" / "defensive"
+SAVE_PATH = f"./models/tetris_dqn_{STRATEGY}.keras"
 
 
 def make_state(
@@ -225,7 +226,9 @@ def play_episode(
     while not p1.game_over and not p2.game_over and pieces < max_pieces:
         pieces += 1
         next_info = p1._get_next_piece_info()
-        actions = pf.get_actions(p1.board.copy(), p1.piece, p1.hold_piece, p1.hold_used, next_info)
+        actions = pf.get_actions(
+            p1.board.copy(), p1.piece, p1.hold_piece, p1.hold_used, next_info
+        )
         if not actions:
             break
 
@@ -319,7 +322,7 @@ def train():
         garbage = random.randint(0, 14)
         p1.respawn_garbage_lines(garbage)
 
-        total_reward = play_episode(p1, p2, agent, pf, strategy)
+        total_reward = play_episode(p1, p2, agent, pf, strategy, max_pieces=MAX_PIECES)
 
         rewards.append(total_reward)
 
@@ -358,7 +361,7 @@ def draw_figure(rewards):
 
     ax.set(xlabel="Episode", ylabel="Reward", title="DQN rewards")
     ax.legend()
-    fig.savefig("./res/rewards.png")
+    fig.savefig(f"./res/rewards_{STRATEGY}.png")
     plt.close(fig)
 
 
