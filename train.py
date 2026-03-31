@@ -218,14 +218,14 @@ def play_episode(
 ):
     total_reward = 0
     pieces = 0
-    prev_height = p1.get_game_state()["aggregate_height"]
+    prev_height = p1.get_game_state()["max_height"]
     while not p1.game_over and not p2.game_over and pieces < max_pieces:
         pieces += 1
         actions = pf.get_actions(p1.board.copy(), p1.piece, p1.hold_piece, p1.hold_used)
         if not actions:
             break
 
-        opp_agg = p2.get_game_state()["aggregate_height"]
+        opp_agg = p2.get_game_state()["max_height"]
         total_before = p1.normal_lines_cleared
         garbage_before = p1.garbage_lines_cleared
         chosen = agent.best_action(
@@ -247,10 +247,10 @@ def play_episode(
 
         normal_cleared = p1.normal_lines_cleared - total_before
         garbage_cleared = p1.garbage_lines_cleared - garbage_before
-        opp_agg_after = p2.get_game_state()["aggregate_height"]
+        opp_agg_after = p2.get_game_state()["max_height"]
 
         gs = p1.get_game_state()
-        height_delta = gs["aggregate_height"] - prev_height
+        height_delta = gs["max_height"] - prev_height
 
         reward = strategy.get_reward(
             STRATEGY,
@@ -258,7 +258,7 @@ def play_episode(
             garbage_cleared,
             gs["holes"],
             gs["bumpiness"],
-            gs["aggregate_height"],
+            gs["max_height"],
             height_delta,
         )
 
@@ -267,7 +267,7 @@ def play_episode(
         elif p2.game_over:
             reward += strategy.penalties[STRATEGY]["win"]
 
-        prev_height = gs["aggregate_height"]
+        prev_height = gs["max_height"]
 
         done = p1.game_over or p2.game_over
 

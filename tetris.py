@@ -58,16 +58,16 @@ class Tetris:
         self.accelerate = False
 
         # DAS/ARR state for left/right
-        self._held_dir = None   # "left" or "right" or None
-        self._das_timer = 0     # ms elapsed since key held
+        self._held_dir = None  # "left" or "right" or None
+        self._das_timer = 0  # ms elapsed since key held
         self._das_charged = False  # True once DAS delay has passed
-        self._arr_timer = 0     # ms elapsed since last ARR repeat
+        self._arr_timer = 0  # ms elapsed since last ARR repeat
 
     def respawn_garbage_lines(self, count: int):
         """Respawn garbage lines with consistent hole column (Jstris style)"""
         if count == 0:
             return
-        
+
         hole_col = random.randint(0, COLS - 1)
         garbage_lines = []
         for _ in range(count):
@@ -138,9 +138,13 @@ class Tetris:
     def _move_piece(self, direction: str):
         """Move the current piece left or right by one cell."""
         piece = self.piece
-        if direction == "left" and self._can_move_to(piece.shape, piece.row, piece.col - 1):
+        if direction == "left" and self._can_move_to(
+            piece.shape, piece.row, piece.col - 1
+        ):
             piece.col -= 1
-        elif direction == "right" and self._can_move_to(piece.shape, piece.row, piece.col + 1):
+        elif direction == "right" and self._can_move_to(
+            piece.shape, piece.row, piece.col + 1
+        ):
             piece.col += 1
 
     def execute(self, command: str):
@@ -295,11 +299,15 @@ class Tetris:
                 (self.x_offset + BOARD_W // 2 - message.get_width() // 2, BOARD_H // 2),
             )
 
-    def render_preview(self, screen: pygame.surface.Surface, font: pygame.font.Font, preview_x: int):
+    def render_preview(
+        self, screen: pygame.surface.Surface, font: pygame.font.Font, preview_x: int
+    ):
         """Render next piece and hold piece preview at the given x position."""
         # HOLD label and box
         hold_label = font.render("HOLD", True, (200, 200, 200))
-        screen.blit(hold_label, (preview_x + PREVIEW_W // 2 - hold_label.get_width() // 2, 30))
+        screen.blit(
+            hold_label, (preview_x + PREVIEW_W // 2 - hold_label.get_width() // 2, 30)
+        )
 
         hold_box = pygame.Rect(preview_x + 5, 55, PREVIEW_W - 10, PREVIEW_W - 10)
         pygame.draw.rect(screen, (50, 50, 50), hold_box, border_radius=4)
@@ -312,7 +320,11 @@ class Tetris:
             cell = 18
             start_x = preview_x + PREVIEW_W // 2 - (piece_w * cell) // 2
             start_y = 55 + (PREVIEW_W - 10) // 2 - (piece_h * cell) // 2
-            color = COLORS[color_id] if not self.hold_used else tuple(c // 2 for c in COLORS[color_id])
+            color = (
+                COLORS[color_id]
+                if not self.hold_used
+                else tuple(c // 2 for c in COLORS[color_id])
+            )
             for r, c in np.argwhere(shape):
                 rect = pygame.Rect(
                     start_x + c * cell,
@@ -325,9 +337,14 @@ class Tetris:
         # NEXT label and box
         next_label = font.render("NEXT", True, (200, 200, 200))
         next_y = 155
-        screen.blit(next_label, (preview_x + PREVIEW_W // 2 - next_label.get_width() // 2, next_y))
+        screen.blit(
+            next_label,
+            (preview_x + PREVIEW_W // 2 - next_label.get_width() // 2, next_y),
+        )
 
-        next_box = pygame.Rect(preview_x + 5, next_y + 25, PREVIEW_W - 10, PREVIEW_W - 10)
+        next_box = pygame.Rect(
+            preview_x + 5, next_y + 25, PREVIEW_W - 10, PREVIEW_W - 10
+        )
         pygame.draw.rect(screen, (50, 50, 50), next_box, border_radius=4)
         pygame.draw.rect(screen, (80, 80, 80), next_box, 1, border_radius=4)
 
@@ -460,7 +477,7 @@ class Tetris:
         heights = self._get_heights()
         return {
             "heights": heights,
-            "aggregate_height": int(heights.max()),
+            "max_height": int(heights.max()),
             "bumpiness": self._get_bumpiness(heights),
             "holes": self._get_holes(heights),
         }

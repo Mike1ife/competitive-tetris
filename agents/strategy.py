@@ -22,7 +22,7 @@ class Strategy:
         garbage_cleared: int,
         holes: int,
         bumpiness: int,
-        aggregate_height: int,
+        max_height: int,
         height_delta: int,
     ):
         return self.strategies[strategy_name](
@@ -30,7 +30,7 @@ class Strategy:
             garbage_cleared,
             holes,
             bumpiness,
-            aggregate_height,
+            max_height,
             height_delta,
         )
 
@@ -40,7 +40,7 @@ class Strategy:
         garbage_cleared: int,
         holes: int,
         bumpiness: int,
-        aggregate_height: int,
+        max_height: int,
         height_delta: int,
     ):
         line_rewards = {0: 0, 1: 0, 2: 500, 3: 1200, 4: 4000}
@@ -59,7 +59,7 @@ class Strategy:
         garbage_cleared: int,
         holes: int,
         bumpiness: int,
-        aggregate_height: int,
+        max_height: int,
         height_delta: int,
     ):
         attack_table = {0: 0, 1: 0, 2: 1, 3: 2, 4: 4}
@@ -70,7 +70,7 @@ class Strategy:
             + garbage_cleared * 100
             - holes * 2.5
             - bumpiness * 0.25
-            - aggregate_height * 1.5
+            - max_height * 1.5
             - max(height_delta, 0) * 0.8
         )
 
@@ -80,7 +80,7 @@ class Strategy:
         garbage_cleared: int,
         holes: int,
         bumpiness: int,
-        aggregate_height: int,
+        max_height: int,
         height_delta: int,
     ):
         line_rewards = {0: 0, 1: 100, 2: 200, 3: 400, 4: 800}
