@@ -29,7 +29,7 @@ def run_headless_round(
                 p1_piece_id = cid
                 cmds = p1_agent.get_command_sequence(
                     p1.board.copy(), p1.piece,
-                    p2.get_game_state()["aggregate_height"],
+                    p2.get_game_state()["max_height"],
                     p1.hold_piece, p1.hold_used,
                 )
                 for cmd in cmds:
@@ -41,7 +41,7 @@ def run_headless_round(
                 p2_piece_id = cid
                 cmds = p2_agent.get_command_sequence(
                     p2.board.copy(), p2.piece,
-                    p1.get_game_state()["aggregate_height"],
+                    p1.get_game_state()["max_height"],
                     p2.hold_piece, p2.hold_used,
                 )
                 for cmd in cmds:

@@ -36,7 +36,12 @@ class Pathfinder:
         _, cols = board.shape
 
         for rotation_id, shape in enumerate(rotations):
-            for col in range(cols):
+            # Find the range of filled columns in the shape
+            filled_cols = np.argwhere(shape)[:, 1]
+            min_c = int(filled_cols.min())
+            max_c = int(filled_cols.max())
+            # Allow negative starting col so filled cells can reach column 0
+            for col in range(-min_c, cols - max_c):
                 dropped_row = self._drop(board, shape, piece.row, col)
                 if dropped_row is None:
                     continue
