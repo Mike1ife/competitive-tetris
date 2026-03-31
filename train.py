@@ -3,6 +3,7 @@
 import numpy as np
 import pygame
 import random
+import time
 import matplotlib.pyplot as plt
 from collections import deque
 from tensorflow import keras
@@ -312,6 +313,7 @@ def train():
     strategy = Strategy()
 
     best_score = -np.inf
+    start_time = time.time()
 
     rewards = []
     for ep in range(1, TRAIN_EPISODES + 1):
@@ -334,14 +336,20 @@ def train():
             if avg_50 > best_score:
                 best_score = avg_50
                 agent.save()
+            elapsed = time.time() - start_time
+            m, s = divmod(int(elapsed), 60)
+            h, m = divmod(m, 60)
             print(
                 f"ep={ep:4d}  avg50={avg_50:7.1f}  eps={agent.epsilon:.3f}  "
-                f"best={best_score:.1f}"
+                f"best={best_score:.1f}  time={h}:{m:02d}:{s:02d}"
             )
         if ep % 200 == 0:
             draw_figure(rewards)
 
-    print("Training complete.")
+    elapsed = time.time() - start_time
+    m, s = divmod(int(elapsed), 60)
+    h, m = divmod(m, 60)
+    print(f"Training complete. Total time: {h}:{m:02d}:{s:02d}")
 
 
 def draw_figure(rewards):

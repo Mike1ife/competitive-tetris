@@ -1,150 +1,114 @@
-from itertools import permutations
-from collections import defaultdict
-import pygame
-from config import P1_COMMANDS, P2_COMMANDS, BOARD_W, PADDING
-from tetris import Tetris
-from agents.agent import Agent
+from config import ROWS, COLS, SCORE_TABLE
 
 
-def run_headless_round(
-    p1_agent: Agent, p2_agent: Agent, max_ticks: int = 20000
-) -> dict:
-    """Simulate one full game between two agents without any rendering."""
-    p1 = Tetris(x_offset=0, commands=P1_COMMANDS)
-    p2 = Tetris(x_offset=BOARD_W + PADDING, commands=P2_COMMANDS)
-    p1.opponent = p2
-    p2.opponent = p1
+class Strategy:
+    def __init__(self):
+        self.strategies = {
+            "neutral": self._get_neutral_reward,
+            "offensive": self._get_offensive_reward,
+            "defensive": self._get_defensive_reward,
+        }
+        self.heuristic_table = {0: 0, 1: 150, 2: 400, 3: 800, 4: 1600}
+        self.penalties = {
+            "neutral": {"death": -2000, "win": 1500},
+            "offensive": {"death": -500, "win": 1500},
+            "defensive": {"death": -2000, "win": 500},
+        }
 
-    p1_piece_id = None
-    p2_piece_id = None
-    dt = 1000 // 60
-
-    for _ in range(max_ticks):
-        if p1.game_over and p2.game_over:
-            break
-
-        if not p1.game_over:
-            cid = id(p1.piece)
-            if cid != p1_piece_id:
-                p1_piece_id = cid
-                cmds = p1_agent.get_command_sequence(
-                    p1.board.copy(), p1.piece,
-                    p2.get_game_state()["max_height"],
-                    p1.hold_piece, p1.hold_used,
-                )
-                for cmd in cmds:
-                    p1.execute(cmd)
-
-        if not p2.game_over:
-            cid = id(p2.piece)
-            if cid != p2_piece_id:
-                p2_piece_id = cid
-                cmds = p2_agent.get_command_sequence(
-                    p2.board.copy(), p2.piece,
-                    p1.get_game_state()["max_height"],
-                    p2.hold_piece, p2.hold_used,
-                )
-                for cmd in cmds:
-                    p2.execute(cmd)
-
-        p1.update(dt)
-        p2.update(dt)
-
-    if p1.game_over and not p2.game_over:
-        winner = "p2"
-    elif p2.game_over and not p1.game_over:
-        winner = "p1"
-    elif p1.score > p2.score:
-        winner = "p1"
-    elif p2.score > p1.score:
-        winner = "p2"
-    else:
-        winner = "draw"
-
-    return {"winner": winner, "p1_score": p1.score, "p2_score": p2.score}
-
-
-def run_double_round_robin(players: dict[str, str], rounds_per_matchup: int = 1):
-    """
-    Run a double round robin tournament.
-
-    Each ordered pair (A, B) plays `rounds_per_matchup` games, so every
-    player faces every other player as both P1 and P2.
-    """
-    pygame.init()
-
-    agents = {
-        label: Agent(path, list(P1_COMMANDS.keys())) for label, path in players.items()
-    }
-
-    matchups = list(permutations(players.keys(), 2))
-    total_matches = len(matchups) * rounds_per_matchup
-
-    stats = defaultdict(lambda: {"wins": 0, "losses": 0, "draws": 0, "score": 0})
-
-    print(f"Players     : {', '.join(f'{k}={v}' for k, v in players.items())}")
-    print(f"Matchups    : {len(matchups)}  (double round robin)")
-    print(f"Rounds each : {rounds_per_matchup}")
-    print(f"Total games : {total_matches}\n")
-    print(
-        f"{'Game':>5}  {'P1':<6}  {'P2':<6}  {'Winner':<8}  {'P1 Score':>10}  {'P2 Score':>10}"
-    )
-    print("-" * 56)
-
-    game_num = 0
-    for home, away in matchups:
-        for _ in range(rounds_per_matchup):
-            game_num += 1
-            result = run_headless_round(agents[home], agents[away])
-
-            if result["winner"] == "p1":
-                winner_label = home
-                stats[home]["wins"] += 1
-                stats[away]["losses"] += 1
-            elif result["winner"] == "p2":
-                winner_label = away
-                stats[away]["wins"] += 1
-                stats[home]["losses"] += 1
-            else:
-                winner_label = "draw"
-                stats[home]["draws"] += 1
-                stats[away]["draws"] += 1
-
-            stats[home]["score"] += result["p1_score"]
-            stats[away]["score"] += result["p2_score"]
-
-            print(
-                f"{game_num:>5}  {home:<6}  {away:<6}  {winner_label:<8}"
-                f"  {result['p1_score']:>10}  {result['p2_score']:>10}"
-            )
-
-    standings = sorted(
-        stats.items(),
-        key=lambda x: (x[1]["wins"], x[1]["draws"], x[1]["score"]),
-        reverse=True,
-    )
-
-    games_per_player = (len(players) - 1) * 2 * rounds_per_matchup
-
-    print("\n" + "=" * 56)
-    print("STANDINGS")
-    print(f"  {'Player':<8}  {'W':>4}  {'L':>4}  {'D':>4}  {'Avg Score':>10}")
-    print("  " + "-" * 38)
-    for label, s in standings:
-        avg = s["score"] / games_per_player if games_per_player else 0
-        print(
-            f"  {label:<8}  {s['wins']:>4}  {s['losses']:>4}  {s['draws']:>4}  {avg:>10.1f}"
+    def get_reward(
+        self,
+        strategy_name: str,
+        normal_cleared: int,
+        garbage_cleared: int,
+        holes: int,
+        bumpiness: int,
+        max_height: int,
+        height_delta: int,
+    ):
+        return self.strategies[strategy_name](
+            normal_cleared,
+            garbage_cleared,
+            holes,
+            bumpiness,
+            max_height,
+            height_delta,
         )
 
-    pygame.quit()
-    return dict(stats)
+    def _get_neutral_reward(
+        self,
+        normal_cleared: int,
+        garbage_cleared: int,
+        holes: int,
+        bumpiness: int,
+        max_height: int,
+        height_delta: int,
+    ):
+        line_rewards = {0: 0, 1: -5, 2: 500, 3: 1200, 4: 4000}
+        return (
+            line_rewards.get(normal_cleared, 4000)
+            + garbage_cleared * 150
+            - holes * 3.0
+            - bumpiness * 0.5
+            - max(height_delta, 0) * 2.0
+            + min(height_delta, 0) * 0.5
+        )
 
+    def _get_offensive_reward(
+        self,
+        normal_cleared: int,
+        garbage_cleared: int,
+        holes: int,
+        bumpiness: int,
+        max_height: int,
+        height_delta: int,
+    ):
+        attack_table = {0: 0, 1: 0, 2: 1, 3: 2, 4: 4}
+        # prioritize garbage instead of line clear (subtile different)
+        garbage_send = attack_table.get(normal_cleared, 4)
+        return (
+            garbage_send * 500
+            + garbage_cleared * 100
+            - holes * 4.0
+            - bumpiness * 0.25
+            - max_height * 3.0
+            - max(height_delta, 0) * 1.2
+        )
 
-if __name__ == "__main__":
-    players = {
-        "p1": "tetris_dqn_v1.keras",
-        "p2": "tetris_dqn_v2.keras",
-        "p3": "tetris_dqn_v3.keras",
-        "p4": "tetris_dqn_v4.keras",
-    }
-    run_double_round_robin(players, rounds_per_matchup=5)
+    def _get_defensive_reward(
+        self,
+        normal_cleared: int,
+        garbage_cleared: int,
+        holes: int,
+        bumpiness: int,
+        max_height: int,
+        height_delta: int,
+    ):
+        line_rewards = {0: 0, 1: 100, 2: 200, 3: 400, 4: 800}
+        return (
+            line_rewards.get(normal_cleared, 800)
+            + garbage_cleared * 200
+            - holes * 1.5
+            - bumpiness * 0.3
+            - max(height_delta, 0) * 1.0
+            + min(height_delta, 0) * 0.5
+        )
+
+    def get_heuristic(self, action: dict):
+        b = action["board_result"]
+        heights = [
+            next((ROWS - r for r in range(ROWS) if b[r][c]), 0) for c in range(COLS)
+        ]
+        max_h = max(heights)
+        agg_h = sum(heights)
+        holes = sum(
+            1
+            for c in range(COLS)
+            for r in range(ROWS - heights[c], ROWS)
+            if not b[r][c]
+        )
+        bump = sum(abs(heights[c] - heights[c + 1]) for c in range(COLS - 1))
+
+        lines = action["lines_cleared"]
+        line_score = self.heuristic_table.get(lines, 1600)
+
+        return line_score - holes * 3.0 - max_h * 0.5 - agg_h * 0.1 - bump * 0.2
