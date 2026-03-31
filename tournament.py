@@ -146,7 +146,7 @@ if __name__ == "__main__":
     players = {
         "p1": "tetris_dqn_neutral.keras",
         "p2": "tetris_dqn_offensive_v1.keras",
-        "p3": "tetris_dqn_defensive_v3.keras",
+        "p3": "tetris_dqn_defensive_v1.keras",
         "p4": "tetris_dqn_defensive_v2.keras",
     }
     run_double_round_robin(players, rounds_per_matchup=5)
