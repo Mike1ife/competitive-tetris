@@ -43,13 +43,12 @@ class Strategy:
         max_height: int,
         height_delta: int,
     ):
-        line_rewards = {0: 0, 1: 0, 2: 500, 3: 1200, 4: 4000}
+        line_rewards = {0: 0, 1: -5, 2: 500, 3: 1200, 4: 4000}
         return (
             line_rewards.get(normal_cleared, 4000)
             + garbage_cleared * 150
             - holes * 3.0
             - bumpiness * 0.5
-            - max_height * 0.5
             - max(height_delta, 0) * 2.0
             + min(height_delta, 0) * 0.5
         )
