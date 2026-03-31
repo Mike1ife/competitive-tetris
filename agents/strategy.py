@@ -10,7 +10,7 @@ class Strategy:
         }
         self.heuristic_table = {0: 0, 1: 150, 2: 400, 3: 800, 4: 1600}
         self.penalties = {
-            "neutral":   {"death": -1000, "win": 800},
+            "neutral":   {"death": -2000, "win": 1500},
             "offensive": {"death": -500,  "win": 1500},
             "defensive": {"death": -2000, "win": 500},
         }
@@ -36,13 +36,13 @@ class Strategy:
         bumpiness: int,
         height_delta: int,
     ):
-        line_rewards = {0: 0, 1: 100, 2: 300, 3: 600, 4: 1200}
+        line_rewards = {0: 0, 1: 50, 2: 400, 3: 1000, 4: 3000}
         return (
-            line_rewards.get(normal_cleared, 1200)
+            line_rewards.get(normal_cleared, 3000)
             + garbage_cleared * 100
             - holes * 0.75
             - bumpiness * 0.15
-            - max(height_delta, 0) * 0.5
+            - max(height_delta, 0) * 1.0
             + min(height_delta, 0) * 0.3
         )
 

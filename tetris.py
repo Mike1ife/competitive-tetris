@@ -15,6 +15,8 @@ from config import (
     BOARD_W,
     SCORE_TABLE,
     PREVIEW_W,
+    DAS,
+    ARR,
 )
 
 
@@ -55,6 +57,12 @@ class Tetris:
         self._fall_timer = 0
         self.accelerate = False
 
+        # DAS/ARR state for left/right
+        self._held_dir = None   # "left" or "right" or None
+        self._das_timer = 0     # ms elapsed since key held
+        self._das_charged = False  # True once DAS delay has passed
+        self._arr_timer = 0     # ms elapsed since last ARR repeat
+
     def respawn_garbage_lines(self, count: int):
         """Respawn garbage lines with consistent hole column (Jstris style)"""
         if count == 0:
@@ -84,6 +92,13 @@ class Tetris:
             self.hold_piece = (self.piece.shape.copy(), self.piece.color_id)
             self.piece = Piece(old_shape, old_color)
 
+    def _get_dir_for_key(self, key):
+        """Return 'left' or 'right' if key matches, else None."""
+        for cmd in ("left", "right"):
+            if cmd in self.commands and self.commands[cmd][0] == key:
+                return cmd
+        return None
+
     def handle_event(self, event: pygame.event.Event):
         """This method is used to handle user's key event"""
         if self.game_over:
@@ -96,10 +111,37 @@ class Tetris:
         elif event.type == pygame.KEYUP and event.key == down_key:
             self.accelerate = False
         elif event.type == pygame.KEYDOWN:
-            for command, (key, _) in self.commands.items():
-                if event.key == key:
-                    self.execute(command)
-                    break
+            # Check if this is a left/right key for DAS/ARR
+            direction = self._get_dir_for_key(event.key)
+            if direction:
+                # Fire one immediate move
+                self._move_piece(direction)
+                # Start DAS tracking
+                self._held_dir = direction
+                self._das_timer = 0
+                self._das_charged = False
+                self._arr_timer = 0
+            else:
+                # Non-directional keys: rotate, hold, drop
+                for command, (key, _) in self.commands.items():
+                    if event.key == key:
+                        self.execute(command)
+                        break
+        elif event.type == pygame.KEYUP:
+            direction = self._get_dir_for_key(event.key)
+            if direction and self._held_dir == direction:
+                self._held_dir = None
+                self._das_timer = 0
+                self._das_charged = False
+                self._arr_timer = 0
+
+    def _move_piece(self, direction: str):
+        """Move the current piece left or right by one cell."""
+        piece = self.piece
+        if direction == "left" and self._can_move_to(piece.shape, piece.row, piece.col - 1):
+            piece.col -= 1
+        elif direction == "right" and self._can_move_to(piece.shape, piece.row, piece.col + 1):
+            piece.col += 1
 
     def execute(self, command: str):
         """This method is used to execute agent's command input"""
@@ -137,9 +179,32 @@ class Tetris:
             self._place()
 
     def update(self, delta: int):
-        """Updating board with auto drop"""
+        """Updating board with auto drop + DAS/ARR"""
         if self.game_over:
             return
+
+        # DAS/ARR for held left/right
+        if self._held_dir is not None:
+            if not self._das_charged:
+                self._das_timer += delta
+                if self._das_timer >= DAS:
+                    self._das_charged = True
+                    self._arr_timer = 0
+                    # Fire first auto-shift move (or snap if ARR=0)
+                    if ARR == 0:
+                        self._snap_piece(self._held_dir)
+                    else:
+                        self._move_piece(self._held_dir)
+            else:
+                # DAS charged, handle ARR repeats
+                if ARR == 0:
+                    # Instant snap every frame
+                    self._snap_piece(self._held_dir)
+                else:
+                    self._arr_timer += delta
+                    while self._arr_timer >= ARR:
+                        self._arr_timer -= ARR
+                        self._move_piece(self._held_dir)
 
         # automatically drop the piece with timer
         interval = ACCELERATE_INTERVAL if self.accelerate else FALL_INTERVAL
@@ -152,6 +217,24 @@ class Tetris:
                 piece.row += 1
             else:
                 self._place()
+
+    def _snap_piece(self, direction: str):
+        """Move piece as far as possible in the given direction (ARR=0 behavior)."""
+        piece = self.piece
+        if direction == "left":
+            while self._can_move_to(piece.shape, piece.row, piece.col - 1):
+                piece.col -= 1
+        elif direction == "right":
+            while self._can_move_to(piece.shape, piece.row, piece.col + 1):
+                piece.col += 1
+
+    def _get_ghost_row(self) -> int:
+        """Get the row where the current piece would land."""
+        piece = self.piece
+        row = piece.row
+        while self._can_move_to(piece.shape, row + 1, piece.col):
+            row += 1
+        return row
 
     def render(self, screen: pygame.surface.Surface, font: pygame.font.Font):
         """Render the board"""
@@ -168,8 +251,23 @@ class Tetris:
                 )
                 pygame.draw.rect(screen, color, rect)
 
-        # draw current piece
+        # draw ghost piece
         piece = self.piece
+        ghost_row = self._get_ghost_row()
+        if ghost_row != piece.row:
+            ghost_fill = tuple(c // 4 for c in COLORS[piece.color_id])
+            ghost_border = tuple(c // 2 for c in COLORS[piece.color_id])
+            for r, c in np.argwhere(piece.shape):
+                rect = pygame.Rect(
+                    self.x_offset + (piece.col + c) * CELL_SIZE,
+                    (ghost_row + r) * CELL_SIZE,
+                    CELL_SIZE - 1,
+                    CELL_SIZE - 1,
+                )
+                pygame.draw.rect(screen, ghost_fill, rect)
+                pygame.draw.rect(screen, ghost_border, rect, 1)
+
+        # draw current piece
         for r, c in np.argwhere(piece.shape):
             rect = pygame.Rect(
                 self.x_offset + (piece.col + c) * CELL_SIZE,
