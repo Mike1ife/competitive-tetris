@@ -10,7 +10,7 @@ NUM_GAMES = 100
 MAX_TICKS = 20000
 MAX_PIECES = 500
 P1_MODEL = "tetris_dqn_neutral_v1.keras"
-P2_MODEL = "tetris_dqn_defensive_v1.keras"
+P2_MODEL = "tetris_dqn_neutral_v2.keras"
 
 
 def run_game(p1_agent, p2_agent):
