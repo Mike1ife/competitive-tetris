@@ -18,16 +18,14 @@ class Strategy:
     def get_reward(
         self,
         strategy_name: str,
-        normal_cleared: int,
-        garbage_cleared: int,
+        total_cleared: int,
         holes: int,
         bumpiness: int,
         max_height: int,
         height_delta: int,
     ):
         return self.strategies[strategy_name](
-            normal_cleared,
-            garbage_cleared,
+            total_cleared,
             holes,
             bumpiness,
             max_height,
@@ -36,14 +34,12 @@ class Strategy:
 
     def _get_neutral_reward(
         self,
-        normal_cleared: int,
-        garbage_cleared: int,
+        total_cleared: int,
         holes: int,
         bumpiness: int,
         max_height: int,
         height_delta: int,
     ):
-        total_cleared = normal_cleared + garbage_cleared
         line_rewards = {0: 0, 1: -10, 2: 500, 3: 1200, 4: 4000}
         return (
             line_rewards.get(total_cleared, 4000)
@@ -52,10 +48,10 @@ class Strategy:
             - max(height_delta, 0) * 2.0
             + min(height_delta, 0) * 0.5
         )
+
     def _get_offensive_reward(
         self,
-        normal_cleared: int,
-        garbage_cleared: int,
+        total_cleared: int,
         holes: int,
         bumpiness: int,
         max_height: int,
@@ -63,7 +59,7 @@ class Strategy:
     ):
         attack_table = {0: 0, 1: 0, 2: 1, 3: 2, 4: 4}
         # prioritize garbage instead of line clear (subtile different)
-        garbage_send = attack_table.get(normal_cleared + garbage_cleared, 4)
+        garbage_send = attack_table.get(total_cleared, 4)
         return (
             garbage_send * 500
             - holes * 4.0
@@ -74,8 +70,7 @@ class Strategy:
 
     def _get_defensive_reward(
         self,
-        normal_cleared: int,
-        garbage_cleared: int,
+        total_cleared: int,
         holes: int,
         bumpiness: int,
         max_height: int,
@@ -83,8 +78,7 @@ class Strategy:
     ):
         line_rewards = {0: 0, 1: 100, 2: 200, 3: 400, 4: 800}
         return (
-            line_rewards.get(normal_cleared, 800)
-            + garbage_cleared * 200
+            line_rewards.get(total_cleared, 800)
             - holes * 1.5
             - bumpiness * 0.3
             - max(height_delta, 0) * 1.0

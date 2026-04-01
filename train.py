@@ -34,16 +34,16 @@ NUM_PIECES = len(TETROMINOS)  # 7
 STATE_SIZE = 4 + NUM_PIECES + NUM_PIECES + 1 + 1
 MEM_SIZE = 20000
 BATCH_SIZE = 128
-MAX_PIECES = 200
+MAX_PIECES = 1000
 DISCOUNT = 0.95
 EPOCHS = 1
 EPSILON_START = 1.0
 EPSILON_MIN = 0.05
-EPSILON_STOP_EP = 2000
+EPSILON_STOP_EP = 1500
 REPLAY_START = 1000
-TRAIN_EPISODES = 3000
+TRAIN_EPISODES = 2000
 TARGET_UPDATE = 200
-STRATEGY = "neutral"  # "neutral" / "offensive" / "defensive"
+STRATEGY = "offensive"  # "neutral" / "offensive" / "defensive"
 SAVE_PATH = f"./models/tetris_dqn_{STRATEGY}.keras"
 
 
@@ -255,6 +255,8 @@ def play_episode(
 
         normal_cleared = p1.normal_lines_cleared - total_before
         garbage_cleared = p1.garbage_lines_cleared - garbage_before
+        total_cleared = normal_cleared + garbage_cleared
+
         opp_agg_after = p2.get_game_state()["max_height"]
 
         gs = p1.get_game_state()
@@ -262,8 +264,7 @@ def play_episode(
 
         reward = strategy.get_reward(
             STRATEGY,
-            normal_cleared,
-            garbage_cleared,
+            total_cleared,
             gs["holes"],
             gs["bumpiness"],
             gs["max_height"],
