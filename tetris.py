@@ -187,8 +187,10 @@ class Tetris:
         elif command == "hold":
             self.hold()
         elif command == "drop":
+            drop_start = piece.row
             while self._can_move_to(piece.shape, piece.row + 1, piece.col):
                 piece.row += 1
+            self.score += 2 * (piece.row - drop_start)
             self._place()
 
     def update(self, delta: int):
@@ -456,9 +458,13 @@ class Tetris:
         if total_cleared == 4:
             if self.b2b:
                 garbage_to_send += 1
+                self.score += 400
             self.b2b = True
         elif total_cleared > 0:
             self.b2b = False
+
+        if self.combo > 0:
+            self.score += 50 * self.combo
 
         if garbage_to_send > 0:
             cancelled = min(garbage_to_send, self.pending_garbage)
