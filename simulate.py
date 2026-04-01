@@ -10,7 +10,7 @@ NUM_GAMES = 100
 MAX_TICKS = 20000
 MAX_PIECES = 500
 P1_MODEL = "tetris_dqn_neutral_v1.keras"
-P2_MODEL = "tetris_dqn_neutral_v2.keras"
+P2_MODEL = "tetris_dqn_defensive_v1.keras"
 
 
 def run_game(p1_agent, p2_agent):
@@ -37,6 +37,7 @@ def run_game(p1_agent, p2_agent):
 
         if not p1.game_over:
             if p1.piece is not p1_piece:
+                p1_prev_combo = p1.combo
                 p1_piece = p1.piece
                 p1_pieces += 1
                 if p1_pieces <= MAX_PIECES:
@@ -48,9 +49,12 @@ def run_game(p1_agent, p2_agent):
                     )
                     for cmd in cmds:
                         p1.execute(cmd)
+                if p1.combo > p1_prev_combo:
+                    p1_combo_count += 1
 
         if not p2.game_over:
             if p2.piece is not p2_piece:
+                p2_prev_combo = p2.combo
                 p2_piece = p2.piece
                 p2_pieces += 1
                 if p2_pieces <= MAX_PIECES:
@@ -62,17 +66,8 @@ def run_game(p1_agent, p2_agent):
                     )
                     for cmd in cmds:
                         p2.execute(cmd)
-
-        p1_prev_combo = p1.combo
-        p2_prev_combo = p2.combo
-
-        p1.update(dt)
-        p2.update(dt)
-
-        if p1.combo > p1_prev_combo:
-            p1_combo_count += 1
-        if p2.combo > p2_prev_combo:
-            p2_combo_count += 1
+                if p2.combo > p2_prev_combo:
+                    p2_combo_count += 1
 
     p1_died = p1.game_over and not p2.game_over
     p2_died = p2.game_over and not p1.game_over
