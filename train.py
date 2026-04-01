@@ -39,11 +39,11 @@ DISCOUNT = 0.95
 EPOCHS = 1
 EPSILON_START = 1.0
 EPSILON_MIN = 0.05
-EPSILON_STOP_EP = 1500
+EPSILON_STOP_EP = 2000
 REPLAY_START = 1000
-TRAIN_EPISODES = 2000
+TRAIN_EPISODES = 3000
 TARGET_UPDATE = 200
-STRATEGY = "offensive"  # "neutral" / "offensive" / "defensive"
+STRATEGY = "neutral"  # "neutral" / "offensive" / "defensive"
 SAVE_PATH = f"./models/tetris_dqn_{STRATEGY}.keras"
 
 

@@ -6,7 +6,7 @@ from config import P1_COMMANDS, P2_COMMANDS, BOARD_W, PADDING
 from tetris import Tetris
 from agents.agent import Agent
 
-NUM_GAMES = 500
+NUM_GAMES = 100
 MAX_TICKS = 20000
 MAX_PIECES = 500
 P1_MODEL = "tetris_dqn_neutral_v3.keras"
@@ -46,7 +46,6 @@ def run_game(p1_agent, p2_agent):
                     )
                     for cmd in cmds:
                         p1.execute(cmd)
-                pygame.event.clear()
 
         if not p2.game_over:
             if p2.piece is not p2_piece:
@@ -61,7 +60,6 @@ def run_game(p1_agent, p2_agent):
                     )
                     for cmd in cmds:
                         p2.execute(cmd)
-                pygame.event.clear()
 
         p1.update(dt)
         p2.update(dt)
