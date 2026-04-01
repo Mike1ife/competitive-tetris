@@ -46,7 +46,7 @@ class Strategy:
             - holes * 3.0
             - bumpiness * 0.5
             - max(height_delta, 0) * 2.0
-            + min(height_delta, 0) * 0.5
+            - min(height_delta, 0) * 0.5
         )
 
     def _get_offensive_reward(
