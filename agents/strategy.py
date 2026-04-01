@@ -33,24 +33,22 @@ class Strategy:
         )
 
     def _get_neutral_reward(
-        self,
-        total_cleared: int,
-        holes: int,
-        bumpiness: int,
-        max_height: int,
-        height_delta: int,
-    ):
-        line_rewards = {0: 0, 1: -10, 2: 500, 3: 1200, 4: 4000}
-        attack_table = {0: 0, 1: 0, 2: 1, 3: 2, 4: 4}
-        garbage_send = attack_table.get(total_cleared, 4)
-        return (
-            line_rewards.get(total_cleared, 4000)
-            + garbage_send * 200
-            - holes * 3.0
-            - bumpiness * 0.5
-            - max(height_delta, 0) * 2.0
-            - min(height_delta, 0) * 0.5
-        )
+            self,
+            total_cleared: int,
+            holes: int,
+            bumpiness: int,
+            max_height: int,
+            height_delta: int,
+        ):
+            line_rewards = {0: 0, 1: -10, 2: 500, 3: 1200, 4: 4000}
+            return (
+                line_rewards.get(total_cleared, 4000)
+                - holes * 3.0
+                - bumpiness * 0.5
+                - max(height_delta, 0) * 2.0
+                - min(height_delta, 0) * 0.5
+            )
+
 
     def _get_offensive_reward(
         self,

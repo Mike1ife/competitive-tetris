@@ -34,16 +34,16 @@ NUM_PIECES = len(TETROMINOS)  # 7
 STATE_SIZE = 4 + NUM_PIECES + NUM_PIECES + 1 + 1
 MEM_SIZE = 20000
 BATCH_SIZE = 128
-MAX_PIECES = 500
+MAX_PIECES = 200
 DISCOUNT = 0.95
 EPOCHS = 1
 EPSILON_START = 1.0
 EPSILON_MIN = 0.05
-EPSILON_STOP_EP = 1500
+EPSILON_STOP_EP = 2000
 REPLAY_START = 1000
-TRAIN_EPISODES = 2000
+TRAIN_EPISODES = 2500
 TARGET_UPDATE = 200
-STRATEGY = "offensive"  # "neutral" / "offensive" / "defensive"
+STRATEGY = "neutral"  # "neutral" / "offensive" / "defensive"
 SAVE_PATH = f"./models/tetris_dqn_{STRATEGY}.keras"
 
 
@@ -213,6 +213,16 @@ class DQNAgent:
         print(f"Saved → {SAVE_PATH}")
 
 
+def _placed_piece(action, piece, hold_piece, next_piece_info):
+    """Return the Piece that was actually placed for this action."""
+    if action["sequence"] and action["sequence"][0] == "hold":
+        if hold_piece is not None:
+            return Piece(hold_piece[0], hold_piece[1])
+        elif next_piece_info is not None:
+            return Piece(next_piece_info[0], next_piece_info[1])
+    return piece
+
+
 def play_episode(
     p1: Tetris,
     p2: Tetris,
@@ -226,9 +236,9 @@ def play_episode(
     prev_height = p1.get_game_state()["max_height"]
     while not p1.game_over and not p2.game_over and pieces < max_pieces:
         pieces += 1
-        next_info = p1._get_next_piece_info()
+        snap_next = p1._get_next_piece_info()
         actions = pf.get_actions(
-            p1.board.copy(), p1.piece, p1.hold_piece, p1.hold_used, next_info
+            p1.board.copy(), p1.piece, p1.hold_piece, p1.hold_used, snap_next
         )
         if not actions:
             break
@@ -236,8 +246,13 @@ def play_episode(
         opp_agg = p2.get_game_state()["max_height"]
         total_before = p1.normal_lines_cleared
         garbage_before = p1.garbage_lines_cleared
+
+        snap_piece = p1.piece
+        snap_hold = p1.hold_piece
+        snap_hold_used = p1.hold_used
+
         chosen = agent.best_action(
-            actions, p1.piece, opp_agg, p1.hold_piece, p1.hold_used
+            actions, snap_piece, opp_agg, snap_hold, snap_hold_used
         )
 
         for cmd in chosen["sequence"]:
@@ -255,6 +270,8 @@ def play_episode(
 
         normal_cleared = p1.normal_lines_cleared - total_before
         garbage_cleared = p1.garbage_lines_cleared - garbage_before
+        total_cleared = normal_cleared + garbage_cleared
+
         opp_agg_after = p2.get_game_state()["max_height"]
 
         gs = p1.get_game_state()
@@ -262,8 +279,7 @@ def play_episode(
 
         reward = strategy.get_reward(
             STRATEGY,
-            normal_cleared,
-            garbage_cleared,
+            total_cleared,
             gs["holes"],
             gs["bumpiness"],
             gs["max_height"],
@@ -279,10 +295,11 @@ def play_episode(
 
         done = p1.game_over or p2.game_over
 
+        placed = _placed_piece(chosen, snap_piece, snap_hold, snap_next)
         action_state = make_state(
             chosen["board_result"],
-            normal_cleared,
-            p1.piece,
+            total_cleared,
+            placed,
             opp_agg_after,
             p1.hold_piece,
             p1.hold_used,
