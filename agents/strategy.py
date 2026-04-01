@@ -66,7 +66,6 @@ class Strategy:
         garbage_send = attack_table.get(normal_cleared + garbage_cleared, 4)
         return (
             garbage_send * 500
-            + garbage_cleared * 100
             - holes * 4.0
             - bumpiness * 0.25
             - max_height * 3.0
