@@ -61,11 +61,12 @@ class Strategy:
         # prioritize garbage instead of line clear (subtile different)
         garbage_send = attack_table.get(total_cleared, 4)
         return (
-            garbage_send * 500
+            garbage_send * 600
             - holes * 4.0
             - bumpiness * 0.25
-            - max_height * 3.0
+            - max_height * 1.0
             - max(height_delta, 0) * 1.2
+            - min(height_delta, 0) * 1.5
         )
 
     def _get_defensive_reward(
@@ -82,7 +83,7 @@ class Strategy:
             - holes * 1.5
             - bumpiness * 0.3
             - max(height_delta, 0) * 1.0
-            + min(height_delta, 0) * 0.5
+            - min(height_delta, 0) * 0.5
         )
 
     def get_heuristic(self, action: dict):
