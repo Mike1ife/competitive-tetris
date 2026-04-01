@@ -43,16 +43,15 @@ class Strategy:
         max_height: int,
         height_delta: int,
     ):
-        line_rewards = {0: 0, 1: -5, 2: 500, 3: 1200, 4: 4000}
+        total_cleared = normal_cleared + garbage_cleared
+        line_rewards = {0: 0, 1: -10, 2: 500, 3: 1200, 4: 4000}
         return (
-            line_rewards.get(normal_cleared, 4000)
-            + garbage_cleared * 150
+            line_rewards.get(total_cleared, 4000)
             - holes * 3.0
             - bumpiness * 0.5
             - max(height_delta, 0) * 2.0
             + min(height_delta, 0) * 0.5
         )
-
     def _get_offensive_reward(
         self,
         normal_cleared: int,
@@ -64,7 +63,7 @@ class Strategy:
     ):
         attack_table = {0: 0, 1: 0, 2: 1, 3: 2, 4: 4}
         # prioritize garbage instead of line clear (subtile different)
-        garbage_send = attack_table.get(normal_cleared, 4)
+        garbage_send = attack_table.get(normal_cleared + garbage_cleared, 4)
         return (
             garbage_send * 500
             + garbage_cleared * 100

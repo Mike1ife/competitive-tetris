@@ -1,8 +1,8 @@
 import pygame
 import numpy as np
 
-AGENT1_SOURCE = "tetris_dqn_neutral.keras"
-AGENT2_SOURCE = "tetris_dqn_neutral.keras"
+AGENT1_SOURCE = "tetris_dqn_defensive_v2.keras"
+AGENT2_SOURCE = "tetris_dqn_neutral_v2.keras"
 
 CELL_SIZE = 30  # cell size
 ROWS, COLS = 20, 10  # row cell num, col cell num
@@ -20,7 +20,7 @@ ACCELERATE_INTERVAL = 50  # accelerate rate (pressing down) = 50 ms
 DAS = 167  # delay before auto-shift starts
 ARR = 33  # interval between repeated moves once auto-shift active (0 = instant)
 
-AGENT_CAPS = {"easy": 1000, "medium": 500, "hard": 333, "none": 111}
+AGENT_CAPS = {"easy": 1000, "medium": 500, "hard": 333, "none": 100}
 
 COLORS = {
     0: (30, 30, 30),  # Background

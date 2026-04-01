@@ -55,6 +55,10 @@ class Tetris:
         self.normal_lines_cleared = 0
         self.garbage_lines_cleared = 0
         self.clear_distribution = {1: 0, 2: 0, 3: 0, 4: 0}
+        self.combo = -1
+        self.b2b = False
+        self.pending_garbage = 0
+        self._last_garbage_cleared = 0
         self._fall_timer = 0
         self.accelerate = False
 
@@ -63,6 +67,10 @@ class Tetris:
         self._das_timer = 0     # ms elapsed since key held
         self._das_charged = False  # True once DAS delay has passed
         self._arr_timer = 0     # ms elapsed since last ARR repeat
+
+    def receive_garbage(self, count: int):
+        """Queue incoming garbage lines (applied on next non-clearing placement)."""
+        self.pending_garbage += count
 
     def respawn_garbage_lines(self, count: int):
         """Respawn garbage lines with consistent hole column (Jstris style)"""
@@ -286,6 +294,14 @@ class Tetris:
         label = font.render(f"Score: {self.score}", True, (255, 255, 255))
         screen.blit(label, (self.x_offset + 4, 4))
 
+        # draw pending garbage indicator (red bar on right side of board)
+        if self.pending_garbage > 0:
+            bar_x = self.x_offset + BOARD_W - 4
+            bar_height = min(self.pending_garbage, ROWS) * CELL_SIZE
+            bar_y = ROWS * CELL_SIZE - bar_height
+            bar_rect = pygame.Rect(bar_x, bar_y, 4, bar_height)
+            pygame.draw.rect(screen, (240, 60, 60), bar_rect)
+
         # display game over
         if self.game_over:
             modal = pygame.Surface(
@@ -425,10 +441,35 @@ class Tetris:
         cleared_count, new_board, new_cell_colors = self._clear_lines()
         self.board = new_board
         self.cell_colors = new_cell_colors
+
+        total_cleared = cleared_count + self._last_garbage_cleared
+
+        if total_cleared > 0:
+            self.combo += 1
+        else:
+            self.combo = -1
+
         attack_table = {0: 0, 1: 0, 2: 1, 3: 2, 4: 4}
-        garbage_to_send = attack_table.get(cleared_count, 4)
-        if garbage_to_send and self.opponent:
-            self.opponent.respawn_garbage_lines(garbage_to_send)
+        garbage_to_send = attack_table.get(total_cleared, 4)
+        if self.combo > 0:
+            garbage_to_send += self.combo
+        if total_cleared == 4:
+            if self.b2b:
+                garbage_to_send += 1
+            self.b2b = True
+        elif total_cleared > 0:
+            self.b2b = False
+
+        if garbage_to_send > 0:
+            cancelled = min(garbage_to_send, self.pending_garbage)
+            self.pending_garbage -= cancelled
+            garbage_to_send -= cancelled
+            if garbage_to_send > 0 and self.opponent:
+                self.opponent.receive_garbage(garbage_to_send)
+
+        if total_cleared == 0 and self.pending_garbage > 0:
+            self.respawn_garbage_lines(self.pending_garbage)
+            self.pending_garbage = 0
 
         self.piece = self._respawn_piece()
         self.hold_used = False  # reset hold for new piece
@@ -449,6 +490,7 @@ class Tetris:
         line_cleared = len(complete_lines) - garbage_line_count
         self.normal_lines_cleared += line_cleared
         self.garbage_lines_cleared += garbage_line_count
+        self._last_garbage_cleared = garbage_line_count
         total_cleared = len(complete_lines)
         if total_cleared in self.clear_distribution:
             self.clear_distribution[total_cleared] += 1
