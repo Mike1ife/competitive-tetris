@@ -43,8 +43,7 @@ EPSILON_STOP_EP = 2000
 REPLAY_START = 1000
 TRAIN_EPISODES = 2500
 TARGET_UPDATE = 200
-STRATEGY = "neutral"  # "neutral" / "offensive" / "defensive"
-SAVE_PATH = f"./models/tetris_dqn_{STRATEGY}.keras"
+STRATEGIES = ["neutral", "offensive", "defensive"]
 
 
 def make_state(
@@ -208,9 +207,9 @@ class DQNAgent:
     def decay_epsilon(self):
         self.epsilon = max(EPSILON_MIN, self.epsilon - self._decay)
 
-    def save(self):
-        self.model.save(SAVE_PATH)
-        print(f"Saved → {SAVE_PATH}")
+    def save(self, path):
+        self.model.save(path)
+        print(f"Saved → {path}")
 
 
 def _placed_piece(action, piece, hold_piece, next_piece_info):
@@ -229,6 +228,7 @@ def play_episode(
     agent: DQNAgent,
     pf: Pathfinder,
     strategy: Strategy,
+    strategy_name: str,
     max_pieces: int = 1000,
 ):
     total_reward = 0
@@ -278,7 +278,7 @@ def play_episode(
         height_delta = gs["max_height"] - prev_height
 
         reward = strategy.get_reward(
-            STRATEGY,
+            strategy_name,
             total_cleared,
             gs["holes"],
             gs["bumpiness"],
@@ -287,9 +287,9 @@ def play_episode(
         )
 
         if p1.game_over:
-            reward = strategy.penalties[STRATEGY]["death"]
+            reward = strategy.penalties[strategy_name]["death"]
         elif p2.game_over:
-            reward += strategy.penalties[STRATEGY]["win"]
+            reward += strategy.penalties[strategy_name]["win"]
 
         prev_height = gs["max_height"]
 
@@ -321,6 +321,16 @@ def play_episode(
 
 
 def train():
+    print("Select strategy:")
+    for i, name in enumerate(STRATEGIES, 1):
+        print(f"  {i}. {name}")
+    choice = input("Enter 1/2/3: ").strip()
+    while choice not in ("1", "2", "3"):
+        choice = input("Invalid. Enter 1/2/3: ").strip()
+    strategy_name = STRATEGIES[int(choice) - 1]
+    save_path = f"./models/tetris_dqn_{strategy_name}.keras"
+    print(f"Training: {strategy_name} → {save_path}\n")
+
     if not pygame.get_init():
         pygame.init()
         pygame.display.set_mode((1, 1))
@@ -341,7 +351,7 @@ def train():
         garbage = random.randint(0, 14)
         p1.respawn_garbage_lines(garbage)
 
-        total_reward = play_episode(p1, p2, agent, pf, strategy, max_pieces=MAX_PIECES)
+        total_reward = play_episode(p1, p2, agent, pf, strategy, strategy_name, max_pieces=MAX_PIECES)
 
         rewards.append(total_reward)
 
@@ -352,7 +362,7 @@ def train():
             avg_50 = np.mean(rewards[-50:])
             if avg_50 > best_score:
                 best_score = avg_50
-                agent.save()
+                agent.save(save_path)
             elapsed = time.time() - start_time
             m, s = divmod(int(elapsed), 60)
             h, m = divmod(m, 60)
@@ -361,7 +371,7 @@ def train():
                 f"best={best_score:.1f}  time={h}:{m:02d}:{s:02d}"
             )
         if ep % 200 == 0:
-            draw_figure(rewards)
+            draw_figure(rewards, strategy_name)
 
     elapsed = time.time() - start_time
     m, s = divmod(int(elapsed), 60)
@@ -369,7 +379,7 @@ def train():
     print(f"Training complete. Total time: {h}:{m:02d}:{s:02d}")
 
 
-def draw_figure(rewards):
+def draw_figure(rewards, strategy_name):
     window = 50
     episodes = np.arange(1, len(rewards) + 1)
 
@@ -386,7 +396,7 @@ def draw_figure(rewards):
 
     ax.set(xlabel="Episode", ylabel="Reward", title="DQN rewards")
     ax.legend()
-    fig.savefig(f"./res/rewards_{STRATEGY}.png")
+    fig.savefig(f"./res/rewards_{strategy_name}.png")
     plt.close(fig)
 
 

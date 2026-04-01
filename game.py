@@ -28,20 +28,20 @@ class Game:
 
     def _run_loop(self):
         last_stats = None
+        last_agent_indices = (0, 0)
         while True:
-            options = run_home(self.screen, self.clock, self.font_lg, self.font_sm, last_stats)
+            options = run_home(self.screen, self.clock, self.font_lg, self.font_sm, last_stats, last_agent_indices)
             if options is None:
                 break
 
+            last_agent_indices = options.get("agent_indices", (0, 0))
             self.agent_cap = AGENT_CAPS[options["difficulty"]]
             self.is_ava = options["p1_agent_source"] is not None and options["p2_agent_source"] is not None
 
-            self.p1_agent = self._load_agent(
-                options["p1_agent_source"], list(P1_COMMANDS.keys())
-            )
-            self.p2_agent = self._load_agent(
-                options["p2_agent_source"], list(P2_COMMANDS.keys())
-            )
+            self.p1_agent_source = options["p1_agent_source"]
+            self.p2_agent_source = options["p2_agent_source"]
+            self.p1_agent = self._load_agent(self.p1_agent_source, list(P1_COMMANDS.keys()))
+            self.p2_agent = self._load_agent(self.p2_agent_source, list(P2_COMMANDS.keys()))
 
             result, stats = self._run_game()
             if stats:
@@ -72,6 +72,12 @@ class Game:
         self._p2_piece = None
         self._p1_last_piece_time = 0
         self._p2_last_piece_time = 0
+        self._p1_combo_count = 0
+        self._p2_combo_count = 0
+        self._p1_max_combo = 0
+        self._p2_max_combo = 0
+        self._p1_prev_combo = -1
+        self._p2_prev_combo = -1
 
         while True:
             self.clock.tick(FPS)
@@ -94,7 +100,17 @@ class Game:
                 if not self.p2_agent:
                     self.p2.handle_event(event)
 
+            self._p1_prev_combo = self.p1.combo
+            self._p2_prev_combo = self.p2.combo
+
             self._agent_event()
+
+            if self.p1.combo > self._p1_prev_combo:
+                self._p1_combo_count += 1
+            if self.p2.combo > self._p2_prev_combo:
+                self._p2_combo_count += 1
+            self._p1_max_combo = max(self._p1_max_combo, self.p1.combo)
+            self._p2_max_combo = max(self._p2_max_combo, self.p2.combo)
 
             self.p1.update(self.clock.get_time())
             self.p2.update(self.clock.get_time())
@@ -114,16 +130,16 @@ class Game:
                 else:
                     winner = "P1 wins"
 
+                self._print_model_info()
                 print(f"{winner}  p1_score={self.p1.score}  p2_score={self.p2.score}")
-                print(f"  P1: lines={self.p1.normal_lines_cleared}  garbage_cleared={self.p1.garbage_lines_cleared}  clears={self.p1.clear_distribution}")
-                print(f"  P2: lines={self.p2.normal_lines_cleared}  garbage_cleared={self.p2.garbage_lines_cleared}  clears={self.p2.clear_distribution}")
+                print(f"  P1: lines={self.p1.normal_lines_cleared}  garbage_cleared={self.p1.garbage_lines_cleared}  clears={self.p1.clear_distribution}  combos={self._p1_combo_count}  max_combo={self._p1_max_combo}")
+                print(f"  P2: lines={self.p2.normal_lines_cleared}  garbage_cleared={self.p2.garbage_lines_cleared}  clears={self.p2.clear_distribution}  combos={self._p2_combo_count}  max_combo={self._p2_max_combo}")
 
                 stats = self._get_stats(winner)
                 result = self._wait_for_back(winner)
                 return result, stats
 
     def _wait_for_back(self, winner):
-        """Show game over screen, wait for Escape to quit or any other key to go back to menu."""
         while True:
             self.clock.tick(FPS)
 
@@ -144,11 +160,10 @@ class Game:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     return "quit"
-                if event.type == pygame.KEYDOWN:
+                if event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
                     return "menu"
 
     def _pause_menu(self):
-        """Pause screen. Escape to resume, Q to quit, M to return to menu."""
         overlay = pygame.Surface((WIN_W, WIN_H), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 160))
 
@@ -182,8 +197,15 @@ class Game:
                     elif event.key == pygame.K_q:
                         return "quit"
 
+    def _print_model_info(self):
+        if self.p1_agent_source and self.p2_agent_source:
+            print(f"P1: {self.p1_agent_source}  vs  P2: {self.p2_agent_source}")
+        elif self.p2_agent_source:
+            print(f"Agent: {self.p2_agent_source}")
+
     def _print_stats(self):
         print(f"\n--- Force Quit ---")
+        self._print_model_info()
         print(f"P1: score={self.p1.score}  lines={self.p1.normal_lines_cleared}  garbage_cleared={self.p1.garbage_lines_cleared}  clears={self.p1.clear_distribution}")
         print(f"P2: score={self.p2.score}  lines={self.p2.normal_lines_cleared}  garbage_cleared={self.p2.garbage_lines_cleared}  clears={self.p2.clear_distribution}")
 

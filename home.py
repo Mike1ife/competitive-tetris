@@ -1,5 +1,6 @@
+import os
 import pygame
-from config import WIN_W, FPS, COLORS, AGENT1_SOURCE, AGENT2_SOURCE
+from config import WIN_W, FPS, COLORS
 
 
 class Button:
@@ -41,74 +42,138 @@ class Button:
         return False
 
 
+class ModelSelector:
+    def __init__(self, center_x: int, y: int, label: str, models: list, index: int = 0):
+        self.label = label
+        self.models = models
+        self.index = index
+        self.center_x = center_x
+        self.y = y
+        self.btn_left = Button((center_x - 190, y, 30, 30), "<", tag="left")
+        self.btn_right = Button((center_x + 160, y, 30, 30), ">", tag="right")
+
+    @property
+    def value(self):
+        return self.models[self.index] if self.models else None
+
+    def render(self, screen: pygame.surface.Surface, font: pygame.font.Font):
+        label_surf = font.render(self.label, True, (160, 160, 160))
+        screen.blit(label_surf, (self.center_x - label_surf.get_width() // 2, self.y - 18))
+
+        self.btn_left.render(screen, font)
+        self.btn_right.render(screen, font)
+
+        name = self.value or "—"
+        text = font.render(name, True, (230, 230, 230))
+        screen.blit(text, (self.center_x - text.get_width() // 2, self.y + 6))
+
+    def trigger(self, event: pygame.event.Event):
+        if not self.models:
+            return
+        if self.btn_left.trigger(event):
+            self.index = (self.index - 1) % len(self.models)
+        if self.btn_right.trigger(event):
+            self.index = (self.index + 1) % len(self.models)
+
+
+def _get_model_list():
+    models_dir = "./models"
+    if not os.path.isdir(models_dir):
+        return []
+    return sorted(f for f in os.listdir(models_dir) if f.endswith(".keras"))
+
+
 def run_home(
     screen: pygame.surface.Surface,
     clock: pygame.time.Clock,
     font_lg: pygame.font.Font,
     font_sm: pygame.font.Font,
     last_stats: dict = None,
+    last_agent_indices: tuple = (0, 0),
 ) -> dict:
-    btn_pva = Button((WIN_W // 2 - 160, 160, 320, 52), "Player vs Agent", tag="pva")
-    btn_pvp = Button((WIN_W // 2 - 160, 228, 320, 52), "Player vs Player", tag="pvp")
-    btn_ava = Button((WIN_W // 2 - 160, 296, 320, 52), "Agent vs Agent", tag="ava")
+    model_list = _get_model_list()
+    idx1, idx2 = last_agent_indices
+
+    sel_agent1 = ModelSelector(WIN_W // 2, 120, "Agent 1", model_list, idx1)
+    sel_agent2 = ModelSelector(WIN_W // 2, 170, "Agent 2 (vs player)", model_list, idx2)
+
+    btn_pva = Button((WIN_W // 2 - 160, 230, 320, 44), "Player vs Agent", tag="pva")
+    btn_pvp = Button((WIN_W // 2 - 160, 286, 320, 44), "Player vs Player", tag="pvp")
+    btn_ava = Button((WIN_W // 2 - 160, 342, 320, 44), "Agent vs Agent", tag="ava")
     btn_pva.selected = True
     mode = "pva"
     mode_btns = [btn_pvp, btn_pva, btn_ava]
 
     difficulty_btns = {
-        "easy": Button((WIN_W // 2 - 160, 224, 96, 38), "Easy", tag="easy"),
-        "medium": Button((WIN_W // 2 - 48, 224, 96, 38), "Medium", tag="medium"),
-        "hard": Button((WIN_W // 2 + 64, 224, 96, 38), "Hard", tag="hard"),
+        "easy": Button((WIN_W // 2 - 160, 344, 96, 38), "Easy", tag="easy"),
+        "medium": Button((WIN_W // 2 - 48, 344, 96, 38), "Medium", tag="medium"),
+        "hard": Button((WIN_W // 2 + 64, 344, 96, 38), "Hard", tag="hard"),
     }
     difficulty_btns["easy"].selected = True
     difficulty = "easy"
 
-    btn_start = Button((WIN_W // 2 - 100, 380, 200, 48), "Start", tag="start")
+    btn_start = Button((WIN_W // 2 - 100, 500, 200, 48), "Start", tag="start")
 
     while True:
         clock.tick(FPS)
 
-        offset_y = 50
         if mode == "pva":
-            btn_pvp.rect.topleft = (WIN_W // 2 - 160, 228 + offset_y)
-            btn_ava.rect.topleft = (WIN_W // 2 - 160, 296 + offset_y)
-            btn_start.rect.topleft = (WIN_W // 2 - 100, 380 + offset_y)
-            hints_y = 500
-            active_btns = mode_btns + list(difficulty_btns.values()) + [btn_start]
+            btn_pva.rect.topleft = (WIN_W // 2 - 160, 230)
+            btn_pvp.rect.topleft = (WIN_W // 2 - 160, 286)
+            btn_ava.rect.topleft = (WIN_W // 2 - 160, 342)
+            for key, dx in zip(["easy", "medium", "hard"], [0, 112, 224]):
+                difficulty_btns[key].rect.topleft = (WIN_W // 2 - 160 + dx, 400)
+            btn_start.rect.topleft = (WIN_W // 2 - 100, 452)
+            hints_y = 516
         else:
-            btn_pvp.rect.topleft = (WIN_W // 2 - 160, 228)
-            btn_ava.rect.topleft = (WIN_W // 2 - 160, 296)
-            btn_start.rect.topleft = (WIN_W // 2 - 100, 380)
-            hints_y = 450
-            active_btns = mode_btns + [btn_start]
+            btn_pva.rect.topleft = (WIN_W // 2 - 160, 230)
+            btn_pvp.rect.topleft = (WIN_W // 2 - 160, 286)
+            btn_ava.rect.topleft = (WIN_W // 2 - 160, 342)
+            btn_start.rect.topleft = (WIN_W // 2 - 100, 400)
+            hints_y = 464
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 return None
 
-            for btn in active_btns:
+            sel_agent1.trigger(event)
+            sel_agent2.trigger(event)
+
+            for btn in mode_btns:
                 if btn.trigger(event):
                     if btn.tag in ("pva", "pvp", "ava"):
                         mode = btn.tag
                         for mode_btn in mode_btns:
                             mode_btn.selected = mode_btn.tag == mode
-                    elif btn.tag in difficulty_btns:
-                        difficulty = btn.tag
-                        for d, difficulty_btn in difficulty_btns.items():
-                            difficulty_btn.selected = d == difficulty
-                    elif btn.tag == "start":
-                        p1_agent_source = None if mode != "ava" else AGENT1_SOURCE
-                        p2_agent_source = None if mode == "pvp" else AGENT2_SOURCE
-                        return {
-                            "p1_agent_source": p1_agent_source,
-                            "p2_agent_source": p2_agent_source,
-                            "difficulty": difficulty if mode == "pva" else "none",
-                        }
+
+            if mode == "pva":
+                for key, difficulty_btn in difficulty_btns.items():
+                    if difficulty_btn.trigger(event):
+                        difficulty = key
+                        for d, db in difficulty_btns.items():
+                            db.selected = d == difficulty
+
+            if btn_start.trigger(event):
+                if mode == "ava":
+                    p1_src = sel_agent1.value
+                    p2_src = sel_agent2.value
+                elif mode == "pva":
+                    p1_src = None
+                    p2_src = sel_agent2.value
+                else:
+                    p1_src = None
+                    p2_src = None
+                return {
+                    "p1_agent_source": p1_src,
+                    "p2_agent_source": p2_src,
+                    "difficulty": difficulty if mode == "pva" else "none",
+                    "agent_indices": (sel_agent1.index, sel_agent2.index),
+                }
 
         screen.fill(COLORS[0])
         title = font_lg.render("Competitive TETRIS", True, (230, 230, 230))
-        screen.blit(title, title.get_rect(center=(WIN_W // 2, 90)))
+        screen.blit(title, title.get_rect(center=(WIN_W // 2, 40)))
 
         tetromino_colors = list(COLORS.values())[1:-1]
         bw = 22
@@ -116,8 +181,11 @@ def run_home(
         x0 = WIN_W // 2 - total // 2
         for i, c in enumerate(tetromino_colors):
             pygame.draw.rect(
-                screen, c, (x0 + i * (bw + 4), 118, bw, bw), border_radius=3
+                screen, c, (x0 + i * (bw + 4), 62, bw, bw), border_radius=3
             )
+
+        sel_agent1.render(screen, font_sm)
+        sel_agent2.render(screen, font_sm)
 
         for mode_btn in mode_btns:
             mode_btn.render(screen, font_sm)
@@ -146,7 +214,7 @@ def run_home(
             p1c = last_stats["p1_clears"]
             p2c = last_stats["p2_clears"]
             stat_lines = [
-                f"P1: {last_stats['p1_score']} pts  {last_stats['p1_lines']} lines  T={p1c.get(4,0)} t={p1c.get(3,0)} d={p1c.get(2,0)} s={p1c.get(1,0)}",
+                f"P1: {last_stats['p1_score']} pts  {last_stats['p1_lines']} lines  T={p1c.get(4,0)} t={p1c.get(3,0)} d={p2c.get(2,0)} s={p1c.get(1,0)}",
                 f"P2: {last_stats['p2_score']} pts  {last_stats['p2_lines']} lines  T={p2c.get(4,0)} t={p2c.get(3,0)} d={p2c.get(2,0)} s={p2c.get(1,0)}",
             ]
             for i, line in enumerate(stat_lines):
