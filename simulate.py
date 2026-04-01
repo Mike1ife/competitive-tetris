@@ -23,6 +23,8 @@ def run_game(p1_agent, p2_agent):
     p2_piece = None
     p1_pieces = 0
     p2_pieces = 0
+    p1_combo_count = 0
+    p2_combo_count = 0
     dt = 1000 // 60
 
     for _ in range(MAX_TICKS):
@@ -61,8 +63,16 @@ def run_game(p1_agent, p2_agent):
                     for cmd in cmds:
                         p2.execute(cmd)
 
+        p1_prev_combo = p1.combo
+        p2_prev_combo = p2.combo
+
         p1.update(dt)
         p2.update(dt)
+
+        if p1.combo > p1_prev_combo:
+            p1_combo_count += 1
+        if p2.combo > p2_prev_combo:
+            p2_combo_count += 1
 
     p1_died = p1.game_over and not p2.game_over
     p2_died = p2.game_over and not p1.game_over
@@ -98,6 +108,8 @@ def run_game(p1_agent, p2_agent):
         "p2_clears": dict(p2.clear_distribution),
         "p1_height": p1.get_game_state()["max_height"],
         "p2_height": p2.get_game_state()["max_height"],
+        "p1_combo_count": p1_combo_count,
+        "p2_combo_count": p2_combo_count,
     }
 
 
@@ -124,6 +136,8 @@ def main():
     p2_pieces_list = []
     p1_clears_total = {1: 0, 2: 0, 3: 0, 4: 0}
     p2_clears_total = {1: 0, 2: 0, 3: 0, 4: 0}
+    p1_combo_counts = []
+    p2_combo_counts = []
 
     print(f"P1: {P1_MODEL}  vs  P2: {P2_MODEL}")
     print(f"Games: {NUM_GAMES}  Max pieces: {MAX_PIECES}\n")
@@ -156,6 +170,8 @@ def main():
         p2_garbage.append(result["p2_garbage_cleared"])
         p1_pieces_list.append(result["p1_pieces"])
         p2_pieces_list.append(result["p2_pieces"])
+        p1_combo_counts.append(result["p1_combo_count"])
+        p2_combo_counts.append(result["p2_combo_count"])
         for k in p1_clears_total:
             p1_clears_total[k] += result["p1_clears"].get(k, 0)
             p2_clears_total[k] += result["p2_clears"].get(k, 0)
@@ -166,13 +182,6 @@ def main():
             f"  {result['p1_lines']:>6}  {result['p2_lines']:>6}"
             f"  {result['p1_garbage_cleared']:>7}  {result['p2_garbage_cleared']:>7}"
         )
-
-    p1_total_clears = sum(p1_clears_total.values())
-    p2_total_clears = sum(p2_clears_total.values())
-    p1_multi = p1_clears_total[2] + p1_clears_total[3] + p1_clears_total[4]
-    p2_multi = p2_clears_total[2] + p2_clears_total[3] + p2_clears_total[4]
-    p1_multi_pct = p1_multi / p1_total_clears * 100 if p1_total_clears else 0
-    p2_multi_pct = p2_multi / p2_total_clears * 100 if p2_total_clears else 0
 
     print("\n" + "=" * 68)
     print(f"RESULTS — {NUM_GAMES} Games")
@@ -196,7 +205,8 @@ def main():
     print(f"{'Doubles':16s}  {p1_clears_total[2]:10d}  {p2_clears_total[2]:10d}")
     print(f"{'Triples':16s}  {p1_clears_total[3]:10d}  {p2_clears_total[3]:10d}")
     print(f"{'Tetrises':16s}  {p1_clears_total[4]:10d}  {p2_clears_total[4]:10d}")
-    print(f"{'Multi-line %':16s}  {p1_multi_pct:9.1f}%  {p2_multi_pct:9.1f}%")
+    print(f"{'Avg combos/game':16s}  {np.mean(p1_combo_counts):10.1f}  {np.mean(p2_combo_counts):10.1f}")
+    print(f"{'Total combos':16s}  {np.sum(p1_combo_counts):10d}  {np.sum(p2_combo_counts):10d}")
 
     pygame.quit()
 
