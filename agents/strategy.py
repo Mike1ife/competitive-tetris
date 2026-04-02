@@ -63,10 +63,10 @@ class Strategy:
         attack_table = {0: 0, 1: 0, 2: 1, 3: 2, 4: 4}
         garbage_send = attack_table.get(total_cleared, 4)
         return (
-            garbage_send * 1500
-            - holes * 2.0
-            - bumpiness * 0.2
-            - max(height_delta, 0) * 1.0
+            garbage_send * 800
+            - holes * 3.0
+            - bumpiness * 0.3
+            - max(height_delta, 0) * 1.5
             + min(height_delta, 0) * 0.5
         )
 
