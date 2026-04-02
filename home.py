@@ -234,8 +234,8 @@ def run_home(
             p1c = last_stats["p1_clears"]
             p2c = last_stats["p2_clears"]
             stat_lines = [
-                f"P1: {last_stats['p1_score']} pts  {last_stats['p1_lines']} lines  T={p1c.get(4,0)} t={p1c.get(3,0)} d={p1c.get(2,0)} s={p1c.get(1,0)}  c={last_stats.get('p1_combos', 0)}",
-                f"P2: {last_stats['p2_score']} pts  {last_stats['p2_lines']} lines  T={p2c.get(4,0)} t={p2c.get(3,0)} d={p2c.get(2,0)} s={p2c.get(1,0)}  c={last_stats.get('p2_combos', 0)}",
+                f"P1: {last_stats['p1_score']} pts  {last_stats['p1_lines']} lines  g={last_stats.get('p1_garbage_sent', 0)}  T={p1c.get(4,0)} t={p1c.get(3,0)} d={p1c.get(2,0)} s={p1c.get(1,0)}  c={last_stats.get('p1_combos', 0)}",
+                f"P2: {last_stats['p2_score']} pts  {last_stats['p2_lines']} lines  g={last_stats.get('p2_garbage_sent', 0)}  T={p2c.get(4,0)} t={p2c.get(3,0)} d={p2c.get(2,0)} s={p2c.get(1,0)}  c={last_stats.get('p2_combos', 0)}",
             ]
             for i, line in enumerate(stat_lines):
                 s = font_sm.render(line, True, (210, 210, 210))
