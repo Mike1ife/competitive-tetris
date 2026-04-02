@@ -29,19 +29,19 @@ OPP_COMMANDS = {
     "drop": (0, "0"),
 }
 
-NUM_PIECES = len(TETROMINOS)  # 7x
+NUM_PIECES = len(TETROMINOS)  # 7
 # board features(4) + current piece one-hot(7) + hold piece one-hot(7) + opp height(1) + hold_available(1)
 STATE_SIZE = 4 + NUM_PIECES + NUM_PIECES + 1 + 1
-MEM_SIZE = 50000
+MEM_SIZE = 20000
 BATCH_SIZE = 128
-MAX_PIECES = 250
+MAX_PIECES = 200
 DISCOUNT = 0.95
 EPOCHS = 1
 EPSILON_START = 1.0
 EPSILON_MIN = 0.05
-EPSILON_STOP_EP = 1500
+EPSILON_STOP_EP = 2000
 REPLAY_START = 1000
-TRAIN_EPISODES = 2000
+TRAIN_EPISODES = 2500
 TARGET_UPDATE = 200
 STRATEGIES = ["neutral", "offensive", "defensive"]
 OPPONENTS = ["heuristic", "random"]
@@ -390,7 +390,7 @@ def train():
                 f"best={best_score:.1f}  time={h}:{m:02d}:{s:02d}"
             )
         if ep % 200 == 0:
-            draw_figure(rewards, strategy_name)
+            draw_figure(rewards, f"{strategy_name}_vs_{opponent}")
 
     elapsed = time.time() - start_time
     m, s = divmod(int(elapsed), 60)
