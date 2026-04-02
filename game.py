@@ -167,6 +167,8 @@ class Game:
                 return result, stats
 
     def _wait_for_back(self, winner):
+        cooldown = pygame.time.get_ticks() + 500
+
         while True:
             self.clock.tick(FPS)
 
@@ -187,8 +189,9 @@ class Game:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     return "quit"
-                if event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
-                    return "menu"
+                if pygame.time.get_ticks() >= cooldown:
+                    if event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
+                        return "menu"
 
     def _pause_menu(self):
         overlay = pygame.Surface((WIN_W, WIN_H), pygame.SRCALPHA)

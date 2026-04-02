@@ -7,10 +7,10 @@ from config import P1_COMMANDS, P2_COMMANDS, BOARD_W, PADDING
 from tetris import Tetris
 from agents.agent import Agent
 
-NUM_GAMES = 250
+NUM_GAMES = 50
 MAX_PIECES = 500
-P1_MODEL = "tetris_dqn_neutral_v1.keras"
-P2_MODEL = "tetris_dqn_neutral_v2.keras"
+P1_MODEL = "tetris_dqn_neutral_v2.keras"
+P2_MODEL = "tetris_dqn_offensive_v2.keras"
 
 
 def run_game(p1_agent, p2_agent):

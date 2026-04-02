@@ -66,6 +66,7 @@ class Strategy:
             garbage_send * 800
             - holes * 3.0
             - bumpiness * 0.3
+            - max_height * 0.2
             - max(height_delta, 0) * 1.5
             + min(height_delta, 0) * 0.5
         )
