@@ -60,15 +60,17 @@ class Strategy:
         max_height: int,
         height_delta: int,
     ):
+        line_rewards = {0: 0, 1: -30, 2: 600, 3: 1500, 4: 5000}
         attack_table = {0: 0, 1: 0, 2: 1, 3: 2, 4: 4}
         garbage_send = attack_table.get(total_cleared, 4)
         return (
-            garbage_send * 800
+            line_rewards.get(total_cleared, 5000)
+            + garbage_send * 400
             - holes * 3.0
             - bumpiness * 0.3
             - max_height * 0.2
             - max(height_delta, 0) * 1.5
-            + min(height_delta, 0) * 0.5
+            - min(height_delta, 0) * 0.5
         )
 
     def _get_defensive_reward(

@@ -161,4 +161,4 @@ if __name__ == "__main__":
         "off_v2": "tetris_dqn_offensive_v2.keras",
         "def_v2": "tetris_dqn_defensive_v2.keras",
     }
-    run_double_round_robin(players, rounds_per_matchup=5)
+    run_double_round_robin(players, rounds_per_matchup=10)
