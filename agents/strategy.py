@@ -11,7 +11,7 @@ class Strategy:
         self.heuristic_table = {0: 0, 1: 150, 2: 400, 3: 800, 4: 1600}
         self.penalties = {
             "neutral": {"death": -2000, "win": 1500},
-            "offensive": {"death": -500, "win": 1500},
+            "offensive": {"death": -1000, "win": 2000},
             "defensive": {"death": -2000, "win": 500},
         }
 
@@ -52,8 +52,6 @@ class Strategy:
                 - min(height_delta, 0) * 0.5
             )
 
-
-
     def _get_offensive_reward(
         self,
         total_cleared: int,
@@ -63,15 +61,13 @@ class Strategy:
         height_delta: int,
     ):
         attack_table = {0: 0, 1: 0, 2: 1, 3: 2, 4: 4}
-        # prioritize garbage instead of line clear (subtile different)
         garbage_send = attack_table.get(total_cleared, 4)
         return (
-            garbage_send * 600
-            - holes * 4.0
-            - bumpiness * 0.25
-            - max_height * 1.0
-            - max(height_delta, 0) * 1.2
-            - min(height_delta, 0) * 1.5
+            garbage_send * 1500
+            - holes * 2.0
+            - bumpiness * 0.2
+            - max(height_delta, 0) * 1.0
+            + min(height_delta, 0) * 0.5
         )
 
     def _get_defensive_reward(
