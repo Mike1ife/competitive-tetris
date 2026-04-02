@@ -49,8 +49,8 @@ class ModelSelector:
         self.index = index
         self.center_x = center_x
         self.y = y
-        self.btn_left = Button((center_x - 190, y, 30, 30), "<", tag="left")
-        self.btn_right = Button((center_x + 160, y, 30, 30), ">", tag="right")
+        self.btn_left = Button((center_x - 190, y, 30, 30), "<<", tag="left")
+        self.btn_right = Button((center_x + 160, y, 30, 30), ">>", tag="right")
 
     @property
     def value(self):
@@ -196,17 +196,37 @@ def run_home(
 
         btn_start.render(screen, font_lg)
 
-        hints = [
-            "P1: A/D move · W/Z rotate · X 180 · Q hold · S soft · Space hard",
-            "P2: ←/→ move · ↑/. rotate · , 180 · RShift hold · ↓ soft · Num0 hard",
-        ]
-        for i, hint in enumerate(hints):
-            s = font_sm.render(hint, True, (140, 140, 140))
-            screen.blit(s, s.get_rect(center=(WIN_W // 2, hints_y + i * 22)))
+        def render_key_hint(screen, font, x, y, label, label_color, keys):
+            """Render a control hint with highlighted key backgrounds."""
+            lbl = font.render(label, True, label_color)
+            screen.blit(lbl, (x, y))
+            cx = x + lbl.get_width() + 10
+            for part in keys:
+                if part.startswith("["):
+                    key_text = part[1:-1]
+                    key_surf = font.render(key_text, True, (255, 255, 255))
+                    pad = 4
+                    bg_rect = pygame.Rect(cx - pad, y - 2, key_surf.get_width() + pad * 2, key_surf.get_height() + 4)
+                    pygame.draw.rect(screen, (70, 65, 120), bg_rect, border_radius=4)
+                    pygame.draw.rect(screen, (100, 90, 160), bg_rect, 1, border_radius=4)
+                    screen.blit(key_surf, (cx, y))
+                    cx += key_surf.get_width() + pad * 2 + 4
+                else:
+                    txt = font.render(part, True, (180, 180, 180))
+                    screen.blit(txt, (cx, y))
+                    cx += txt.get_width() + 4
+
+        p1_keys = ["[A]","[D]","move  ","[W]","[Z]","rot  ","[X]","180  ","[Q]","hold  ","[S]","soft  ","[Space]","hard"]
+        p2_keys = ["[\u2190]","[\u2192]","move  ","[\u2191]","[.]","rot  ","[,]","180  ","[RShift]","hold  ","[\u2193]","soft  ","[/]","hard"]
+
+        total_test = font_sm.render("A D move W Z rot X 180 Q hold S soft Space hard      ", True, (0,0,0))
+        p1_x = WIN_W // 2 - total_test.get_width() // 2 - 20
+        render_key_hint(screen, font_sm, p1_x, hints_y, "P1:", (100, 200, 255), p1_keys)
+        render_key_hint(screen, font_sm, p1_x, hints_y + 30, "P2:", (255, 180, 100), p2_keys)
 
         if last_stats:
             stats_y = hints_y + 60
-            winner_color = (255, 255, 100) if last_stats["winner"] else (180, 180, 180)
+            winner_color = (255, 255, 100) if last_stats["winner"] else (200, 200, 200)
             winner_text = last_stats["winner"] or "No result"
             s = font_sm.render(f"Last game: {winner_text}", True, winner_color)
             screen.blit(s, s.get_rect(center=(WIN_W // 2, stats_y)))
@@ -214,11 +234,11 @@ def run_home(
             p1c = last_stats["p1_clears"]
             p2c = last_stats["p2_clears"]
             stat_lines = [
-                f"P1: {last_stats['p1_score']} pts  {last_stats['p1_lines']} lines  T={p1c.get(4,0)} t={p1c.get(3,0)} d={p2c.get(2,0)} s={p1c.get(1,0)}",
-                f"P2: {last_stats['p2_score']} pts  {last_stats['p2_lines']} lines  T={p2c.get(4,0)} t={p2c.get(3,0)} d={p2c.get(2,0)} s={p2c.get(1,0)}",
+                f"P1: {last_stats['p1_score']} pts  {last_stats['p1_lines']} lines  T={p1c.get(4,0)} t={p1c.get(3,0)} d={p1c.get(2,0)} s={p1c.get(1,0)}  c={last_stats.get('p1_combos', 0)}",
+                f"P2: {last_stats['p2_score']} pts  {last_stats['p2_lines']} lines  T={p2c.get(4,0)} t={p2c.get(3,0)} d={p2c.get(2,0)} s={p2c.get(1,0)}  c={last_stats.get('p2_combos', 0)}",
             ]
             for i, line in enumerate(stat_lines):
-                s = font_sm.render(line, True, (160, 160, 160))
+                s = font_sm.render(line, True, (210, 210, 210))
                 screen.blit(s, s.get_rect(center=(WIN_W // 2, stats_y + 22 + i * 20)))
 
         pygame.display.flip()

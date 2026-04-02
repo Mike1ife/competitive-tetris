@@ -96,7 +96,7 @@ P2_COMMANDS = {
     "rotate_left": (pygame.K_PERIOD, "."),
     "rotate_180": (pygame.K_COMMA, ","),
     "hold": (pygame.K_RSHIFT, "/"),
-    "drop": (pygame.K_KP_0, "0"),
+    "drop": (pygame.K_SLASH, "/"),
 }
 
 SCORE_TABLE = {0: 0, 1: 100, 2: 300, 3: 500, 4: 800}

@@ -60,6 +60,8 @@ class Game:
             "p2_garbage": self.p2.garbage_lines_cleared,
             "p1_clears": dict(self.p1.clear_distribution),
             "p2_clears": dict(self.p2.clear_distribution),
+            "p1_combos": self._p1_combo_count,
+            "p2_combos": self._p2_combo_count,
         }
 
     def _run_game(self):
