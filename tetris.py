@@ -376,6 +376,13 @@ class Tetris:
             )
             pygame.draw.rect(screen, COLORS[color_id], rect)
 
+        # combo display
+        if self.combo > 0:
+            combo_label = font.render("Combo", True, (255, 200, 0))
+            combo_num = font.render(f"x{self.combo}", True, (255, 200, 0))
+            screen.blit(combo_label, (preview_x + PREVIEW_W // 2 - combo_label.get_width() // 2, next_y + 110))
+            screen.blit(combo_num, (preview_x + PREVIEW_W // 2 - combo_num.get_width() // 2, next_y + 130))
+
     def _get_next_piece_info(self):
         """Peek at next piece in bag without removing it."""
         if not self.bag:
