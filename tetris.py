@@ -61,6 +61,8 @@ class Tetris:
         self._last_garbage_cleared = 0
         self._fall_timer = 0
         self.accelerate = False
+        self.hide_ghost = False
+        self.transparent_ghost = False
 
         # DAS/ARR state for left/right
         self._held_dir = None   # "left" or "right" or None
@@ -264,18 +266,27 @@ class Tetris:
         # draw ghost piece
         piece = self.piece
         ghost_row = self._get_ghost_row()
-        if ghost_row != piece.row:
-            ghost_fill = tuple(c // 4 for c in COLORS[piece.color_id])
-            ghost_border = tuple(c // 2 for c in COLORS[piece.color_id])
-            for r, c in np.argwhere(piece.shape):
-                rect = pygame.Rect(
-                    self.x_offset + (piece.col + c) * CELL_SIZE,
-                    (ghost_row + r) * CELL_SIZE,
-                    CELL_SIZE - 1,
-                    CELL_SIZE - 1,
-                )
-                pygame.draw.rect(screen, ghost_fill, rect)
-                pygame.draw.rect(screen, ghost_border, rect, 1)
+        if ghost_row != piece.row and not self.hide_ghost:
+            if self.transparent_ghost:
+                for r, c in np.argwhere(piece.shape):
+                    surf = pygame.Surface((CELL_SIZE - 1, CELL_SIZE - 1), pygame.SRCALPHA)
+                    surf.fill((*COLORS[piece.color_id], 20))
+                    screen.blit(surf, (
+                        self.x_offset + (piece.col + c) * CELL_SIZE,
+                        (ghost_row + r) * CELL_SIZE,
+                    ))
+            else:
+                ghost_fill = tuple(c // 4 for c in COLORS[piece.color_id])
+                ghost_border = tuple(c // 2 for c in COLORS[piece.color_id])
+                for r, c in np.argwhere(piece.shape):
+                    rect = pygame.Rect(
+                        self.x_offset + (piece.col + c) * CELL_SIZE,
+                        (ghost_row + r) * CELL_SIZE,
+                        CELL_SIZE - 1,
+                        CELL_SIZE - 1,
+                    )
+                    pygame.draw.rect(screen, ghost_fill, rect)
+                    pygame.draw.rect(screen, ghost_border, rect, 1)
 
         # draw current piece
         for r, c in np.argwhere(piece.shape):
@@ -330,7 +341,7 @@ class Tetris:
             cell = 18
             start_x = preview_x + PREVIEW_W // 2 - (piece_w * cell) // 2
             start_y = 55 + (PREVIEW_W - 10) // 2 - (piece_h * cell) // 2
-            color = COLORS[color_id] if not self.hold_used else tuple(c // 2 for c in COLORS[color_id])
+            color = COLORS[color_id]
             for r, c in np.argwhere(shape):
                 rect = pygame.Rect(
                     start_x + c * cell,

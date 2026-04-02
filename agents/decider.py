@@ -28,6 +28,23 @@ class Decider:
         qs = self.model(states, training=False).numpy().flatten()
         return actions[int(np.argmax(qs))]["sequence"]
 
+    def get_best_action(self, actions: list, piece: Piece, opp_agg: int = 0,
+                        hold_piece=None, hold_used=False, next_piece_info=None) -> dict | None:
+        """Return the full action dict for the best placement."""
+        if not actions:
+            return None
+
+        states = np.array([
+            self._make_state(
+                a,
+                self._placed_piece(a, piece, hold_piece, next_piece_info),
+                opp_agg, hold_piece, hold_used
+            )
+            for a in actions
+        ])
+        qs = self.model(states, training=False).numpy().flatten()
+        return actions[int(np.argmax(qs))]
+
     def _placed_piece(self, action, piece, hold_piece, next_piece_info):
         """Return the Piece that was actually placed for this action."""
         if action["sequence"] and action["sequence"][0] == "hold":

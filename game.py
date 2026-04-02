@@ -10,6 +10,8 @@ from config import (
     PREVIEW_W,
     FPS,
     AGENT_CAPS,
+    COLORS,
+    CELL_SIZE,
 )
 from tetris import Tetris
 from agents.agent import Agent
@@ -70,6 +72,11 @@ class Game:
         self.p1.opponent = self.p2
         self.p2.opponent = self.p1
 
+        if self.p1_agent:
+            self.p1.transparent_ghost = True
+        if self.p2_agent:
+            self.p2.transparent_ghost = True
+
         self._p1_piece = None
         self._p2_piece = None
         self._p1_last_piece_time = 0
@@ -80,6 +87,12 @@ class Game:
         self._p2_max_combo = 0
         self._p1_prev_combo = -1
         self._p2_prev_combo = -1
+        self._p1_planned = None
+        self._p2_planned = None
+        self._p1_planned_pending = None
+        self._p2_planned_pending = None
+        self._p1_cmds = None
+        self._p2_cmds = None
 
         while True:
             self.clock.tick(FPS)
@@ -114,12 +127,22 @@ class Game:
             self._p1_max_combo = max(self._p1_max_combo, self.p1.combo)
             self._p2_max_combo = max(self._p2_max_combo, self.p2.combo)
 
+            now = pygame.time.get_ticks()
+            if self._p1_planned and not self._p1_cmds:
+                self._p1_planned = None
+                self.p1.hide_ghost = False
+            if self._p2_planned and not self._p2_cmds:
+                self._p2_planned = None
+                self.p2.hide_ghost = False
+
             self.p1.update(self.clock.get_time())
             self.p2.update(self.clock.get_time())
 
             self.screen.fill((10, 10, 10))
             self.p1.render(self.screen, self.font_lg)
             self.p2.render(self.screen, self.font_lg)
+            self._render_planned(self.screen, self.p1, self._p1_planned)
+            self._render_planned(self.screen, self.p2, self._p2_planned)
             self.p1.render_preview(self.screen, self.font_lg, 0)
             self.p2.render_preview(self.screen, self.font_lg, PREVIEW_W + BOARD_W * 2 + PADDING)
             pygame.display.flip()
@@ -211,6 +234,20 @@ class Game:
         print(f"P1: score={self.p1.score}  lines={self.p1.normal_lines_cleared}  garbage_cleared={self.p1.garbage_lines_cleared}  clears={self.p1.clear_distribution}")
         print(f"P2: score={self.p2.score}  lines={self.p2.normal_lines_cleared}  garbage_cleared={self.p2.garbage_lines_cleared}  clears={self.p2.clear_distribution}")
 
+    def _render_planned(self, screen, tetris_board, planned):
+        """Render a ghost piece showing the agent's planned placement."""
+        if planned is None:
+            return
+        row, col, shape, color_id = planned
+        color = COLORS[color_id]
+        for r, c in np.argwhere(shape):
+            surf = pygame.Surface((CELL_SIZE - 1, CELL_SIZE - 1), pygame.SRCALPHA)
+            surf.fill((*color, 20))
+            screen.blit(surf, (
+                tetris_board.x_offset + (col + c) * CELL_SIZE,
+                (row + r) * CELL_SIZE,
+            ))
+
     def _load_agent(self, source: str, commands: list):
         if not source:
             return None
@@ -220,38 +257,70 @@ class Game:
         now = pygame.time.get_ticks()
 
         if self.p1_agent and not self.p1.game_over:
-            if self.p1.piece is not self._p1_piece and (
-                now - self._p1_last_piece_time >= self.agent_cap
-            ):
+            if self.p1.piece is not self._p1_piece:
                 self._p1_piece = self.p1.piece
-                cmds = self.p1_agent.get_command_sequence(
-                    self.p1.board.copy(),
-                    self.p1.piece,
+                self._p1_last_piece_time = now
+                action = self.p1_agent.get_best_action(
+                    self.p1.board.copy(), self.p1.piece,
                     self.p2.get_game_state()["max_height"],
-                    self.p1.hold_piece,
-                    self.p1.hold_used,
+                    self.p1.hold_piece, self.p1.hold_used,
                     self.p1._get_next_piece_info(),
                 )
-                self._p1_last_piece_time = now
-                for cmd in cmds:
+                if action:
+                    self._p1_cmds = action["sequence"]
+                    color_id = action["color_id"] + 1
+                    if self._p1_cmds and self._p1_cmds[0] == "hold":
+                        self.p1.execute("hold")
+                        self._p1_cmds = self._p1_cmds[1:]
+                        self._p1_piece = self.p1.piece
+                        self._p1_last_piece_time = now
+                        self.p1.hide_ghost = False
+                    self._p1_planned_pending = (action["row"], action["col"], action["shape"], color_id)
+                    self._p1_planned = None
+                else:
+                    self._p1_cmds = []
+                    self._p1_planned = None
+            if self._p1_cmds and now - self._p1_last_piece_time >= self.agent_cap:
+                for cmd in self._p1_cmds:
                     self.p1.execute(cmd)
+                self._p1_cmds = None
+            elif self._p1_planned_pending and not self._p1_planned and now - self._p1_last_piece_time >= self.agent_cap // 4:
+                self._p1_planned = self._p1_planned_pending
+                self._p1_planned_pending = None
+                self.p1.hide_ghost = True
 
         if self.p2_agent and not self.p2.game_over:
-            if self.p2.piece is not self._p2_piece and (
-                now - self._p2_last_piece_time >= self.agent_cap
-            ):
+            if self.p2.piece is not self._p2_piece:
                 self._p2_piece = self.p2.piece
-                cmds = self.p2_agent.get_command_sequence(
-                    self.p2.board.copy(),
-                    self.p2.piece,
+                self._p2_last_piece_time = now
+                action = self.p2_agent.get_best_action(
+                    self.p2.board.copy(), self.p2.piece,
                     self.p1.get_game_state()["max_height"],
-                    self.p2.hold_piece,
-                    self.p2.hold_used,
+                    self.p2.hold_piece, self.p2.hold_used,
                     self.p2._get_next_piece_info(),
                 )
-                self._p2_last_piece_time = now
-                for cmd in cmds:
+                if action:
+                    self._p2_cmds = action["sequence"]
+                    color_id = action["color_id"] + 1
+                    if self._p2_cmds and self._p2_cmds[0] == "hold":
+                        self.p2.execute("hold")
+                        self._p2_cmds = self._p2_cmds[1:]
+                        self._p2_piece = self.p2.piece
+                        self._p2_last_piece_time = now
+                        self.p2.hide_ghost = False
+                    self._p2_planned_pending = (action["row"], action["col"], action["shape"], color_id)
+                    self._p2_planned = None
+                else:
+                    self._p2_cmds = []
+                    self._p2_planned = None
+            if self._p2_cmds and now - self._p2_last_piece_time >= self.agent_cap:
+                for cmd in self._p2_cmds:
                     self.p2.execute(cmd)
+                self._p2_cmds = None
+            elif self._p2_planned_pending and not self._p2_planned and now - self._p2_last_piece_time >= self.agent_cap // 4:
+                self._p2_planned = self._p2_planned_pending
+                self._p2_planned_pending = None
+                self.p2.hide_ghost = True
 
 
 if __name__ == "__main__":
