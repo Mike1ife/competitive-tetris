@@ -64,6 +64,8 @@ class Game:
             "p2_clears": dict(self.p2.clear_distribution),
             "p1_combos": self._p1_combo_count,
             "p2_combos": self._p2_combo_count,
+            "p1_garbage_sent": self.p1.total_garbage_sent,
+            "p2_garbage_sent": self.p2.total_garbage_sent,
         }
 
     def _run_game(self):
@@ -157,8 +159,8 @@ class Game:
 
                 self._print_model_info()
                 print(f"{winner}  p1_score={self.p1.score}  p2_score={self.p2.score}")
-                print(f"  P1: lines={self.p1.normal_lines_cleared}  garbage_cleared={self.p1.garbage_lines_cleared}  clears={self.p1.clear_distribution}  combos={self._p1_combo_count}  max_combo={self._p1_max_combo}")
-                print(f"  P2: lines={self.p2.normal_lines_cleared}  garbage_cleared={self.p2.garbage_lines_cleared}  clears={self.p2.clear_distribution}  combos={self._p2_combo_count}  max_combo={self._p2_max_combo}")
+                print(f"  P1: lines={self.p1.normal_lines_cleared}  garbage_sent={self.p1.total_garbage_sent}  clears={self.p1.clear_distribution}  combos={self._p1_combo_count}  max_combo={self._p1_max_combo}")
+                print(f"  P2: lines={self.p2.normal_lines_cleared}  garbage_sent={self.p2.total_garbage_sent}  clears={self.p2.clear_distribution}  combos={self._p2_combo_count}  max_combo={self._p2_max_combo}")
 
                 stats = self._get_stats(winner)
                 result = self._wait_for_back(winner)

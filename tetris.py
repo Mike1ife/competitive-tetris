@@ -58,6 +58,7 @@ class Tetris:
         self.combo = -1
         self.b2b = False
         self.pending_garbage = 0
+        self.total_garbage_sent = 0
         self._last_garbage_cleared = 0
         self._fall_timer = 0
         self.accelerate = False
@@ -478,6 +479,7 @@ class Tetris:
             garbage_to_send -= cancelled
             if garbage_to_send > 0 and self.opponent:
                 self.opponent.receive_garbage(garbage_to_send)
+                self.total_garbage_sent += garbage_to_send
 
         if total_cleared == 0 and self.pending_garbage > 0:
             self.respawn_garbage_lines(self.pending_garbage)

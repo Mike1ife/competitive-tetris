@@ -7,10 +7,10 @@ from config import P1_COMMANDS, P2_COMMANDS, BOARD_W, PADDING
 from tetris import Tetris
 from agents.agent import Agent
 
-NUM_GAMES = 50
+NUM_GAMES = 250
 MAX_PIECES = 500
-P1_MODEL = "tetris_dqn_neutral_v2.keras"
-P2_MODEL = "tetris_dqn_offensive_v2.keras"
+P1_MODEL = "tetris_dqn_neutral_v1.keras"
+P2_MODEL = "tetris_dqn_neutral_v2.keras"
 
 
 def run_game(p1_agent, p2_agent):
@@ -96,8 +96,8 @@ def run_game(p1_agent, p2_agent):
         "p2_score": p2.score,
         "p1_lines": p1.normal_lines_cleared,
         "p2_lines": p2.normal_lines_cleared,
-        "p1_garbage_cleared": p1.garbage_lines_cleared,
-        "p2_garbage_cleared": p2.garbage_lines_cleared,
+        "p1_garbage_sent": p1.total_garbage_sent,
+        "p2_garbage_sent": p2.total_garbage_sent,
         "p1_pieces": p1_pieces,
         "p2_pieces": p2_pieces,
         "p1_clears": dict(p1.clear_distribution),
@@ -137,7 +137,7 @@ def main():
 
     print(f"P1: {P1_MODEL}  vs  P2: {P2_MODEL}")
     print(f"Games: {NUM_GAMES}  Max pieces: {MAX_PIECES}\n")
-    print(f"{'Game':>5}  {'Winner':<6}  {'P1 Score':>9}  {'P2 Score':>9}  {'P1 Ln':>6}  {'P2 Ln':>6}  {'P1 Garb':>7}  {'P2 Garb':>7}")
+    print(f"{'Game':>5}  {'Winner':<6}  {'P1 Score':>9}  {'P2 Score':>9}  {'P1 Ln':>6}  {'P2 Ln':>6}  {'P1 Sent':>7}  {'P2 Sent':>7}")
     print("-" * 68)
 
     start_time = time.time()
@@ -168,8 +168,8 @@ def main():
         p2_scores.append(result["p2_score"])
         p1_lines.append(result["p1_lines"])
         p2_lines.append(result["p2_lines"])
-        p1_garbage.append(result["p1_garbage_cleared"])
-        p2_garbage.append(result["p2_garbage_cleared"])
+        p1_garbage.append(result["p1_garbage_sent"])
+        p2_garbage.append(result["p2_garbage_sent"])
         p1_pieces_list.append(result["p1_pieces"])
         p2_pieces_list.append(result["p2_pieces"])
         p1_combo_counts.append(result["p1_combo_count"])
@@ -184,7 +184,7 @@ def main():
             f"{i:>5}  {result['winner']:<6}"
             f"  {result['p1_score']:>9}  {result['p2_score']:>9}"
             f"  {result['p1_lines']:>6}  {result['p2_lines']:>6}"
-            f"  {result['p1_garbage_cleared']:>7}  {result['p2_garbage_cleared']:>7}"
+            f"  {result['p1_garbage_sent']:>7}  {result['p2_garbage_sent']:>7}"
             f"  {m}:{s:02d}"
         )
 
@@ -207,7 +207,7 @@ def main():
     print(f"{'Avg lines':16s}  {np.mean(p1_lines):10.1f}  {np.mean(p2_lines):10.1f}")
     print(f"{'Max lines':16s}  {np.max(p1_lines):10d}  {np.max(p2_lines):10d}")
     print(f"{'Avg pieces':16s}  {np.mean(p1_pieces_list):10.1f}  {np.mean(p2_pieces_list):10.1f}")
-    print(f"{'Avg garb clr':16s}  {np.mean(p1_garbage):10.1f}  {np.mean(p2_garbage):10.1f}")
+    print(f"{'Avg garb sent':16s}  {np.mean(p1_garbage):10.1f}  {np.mean(p2_garbage):10.1f}")
     print(f"{'Lines/piece':16s}  {np.sum(p1_lines)/np.sum(p1_pieces_list):10.3f}  {np.sum(p2_lines)/np.sum(p2_pieces_list):10.3f}")
     print()
     print(f"{'Clear dist':16s}  {'P1':>10s}  {'P2':>10s}")
