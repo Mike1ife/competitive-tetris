@@ -147,6 +147,7 @@ class Game:
             self._render_planned(self.screen, self.p2, self._p2_planned)
             self.p1.render_preview(self.screen, self.font_lg, 0)
             self.p2.render_preview(self.screen, self.font_lg, PREVIEW_W + BOARD_W * 2 + PADDING)
+            self._render_model_labels()
             pygame.display.flip()
 
             if self.p1.game_over or self.p2.game_over:
@@ -238,6 +239,16 @@ class Game:
         self._print_model_info()
         print(f"P1: score={self.p1.score}  lines={self.p1.normal_lines_cleared}  garbage_cleared={self.p1.garbage_lines_cleared}  clears={self.p1.clear_distribution}")
         print(f"P2: score={self.p2.score}  lines={self.p2.normal_lines_cleared}  garbage_cleared={self.p2.garbage_lines_cleared}  clears={self.p2.clear_distribution}")
+
+    def _render_model_labels(self):
+        from home import _parse_model_name
+        y = WIN_H - 18
+        if self.p1_agent_source:
+            label = self.font_sm.render(_parse_model_name(self.p1_agent_source), True, (160, 160, 160))
+            self.screen.blit(label, (PREVIEW_W + (BOARD_W - label.get_width()) // 2, y))
+        if self.p2_agent_source:
+            label = self.font_sm.render(_parse_model_name(self.p2_agent_source), True, (160, 160, 160))
+            self.screen.blit(label, (PREVIEW_W + BOARD_W + PADDING + (BOARD_W - label.get_width()) // 2, y))
 
     def _render_planned(self, screen, tetris_board, planned):
         """Render a ghost piece showing the agent's planned placement."""
