@@ -160,8 +160,8 @@ class Game:
 
                 self._print_model_info()
                 print(f"{winner}  p1_score={self.p1.score}  p2_score={self.p2.score}")
-                print(f"  P1: lines={self.p1.normal_lines_cleared}  garbage_sent={self.p1.total_garbage_sent}  clears={self.p1.clear_distribution}  combos={self._p1_combo_count}  max_combo={self._p1_max_combo}")
-                print(f"  P2: lines={self.p2.normal_lines_cleared}  garbage_sent={self.p2.total_garbage_sent}  clears={self.p2.clear_distribution}  combos={self._p2_combo_count}  max_combo={self._p2_max_combo}")
+                print(f"  P1: lines={self.p1.normal_lines_cleared + self.p1.garbage_lines_cleared}  garbage_sent={self.p1.total_garbage_sent}  clears={self.p1.clear_distribution}  combos={self._p1_combo_count}  max_combo={self._p1_max_combo}")
+                print(f"  P2: lines={self.p2.normal_lines_cleared + self.p2.garbage_lines_cleared}  garbage_sent={self.p2.total_garbage_sent}  clears={self.p2.clear_distribution}  combos={self._p2_combo_count}  max_combo={self._p2_max_combo}")
 
                 stats = self._get_stats(winner)
                 result = self._wait_for_back(winner)
@@ -237,12 +237,12 @@ class Game:
     def _print_stats(self):
         print(f"\n--- Force Quit ---")
         self._print_model_info()
-        print(f"P1: score={self.p1.score}  lines={self.p1.normal_lines_cleared}  garbage_cleared={self.p1.garbage_lines_cleared}  clears={self.p1.clear_distribution}")
-        print(f"P2: score={self.p2.score}  lines={self.p2.normal_lines_cleared}  garbage_cleared={self.p2.garbage_lines_cleared}  clears={self.p2.clear_distribution}")
+        print(f"  P1: score={self.p1.score}  lines={self.p1.normal_lines_cleared + self.p1.garbage_lines_cleared}  garbage_sent={self.p1.total_garbage_sent}  clears={self.p1.clear_distribution}  combos={self._p1_combo_count}  max_combo={self._p1_max_combo}")
+        print(f"  P2: score={self.p2.score}  lines={self.p2.normal_lines_cleared + self.p2.garbage_lines_cleared}  garbage_sent={self.p2.total_garbage_sent}  clears={self.p2.clear_distribution}  combos={self._p2_combo_count}  max_combo={self._p2_max_combo}")
 
     def _render_model_labels(self):
         from home import _parse_model_name
-        y = WIN_H - 18
+        y = WIN_H - 40
         if self.p1_agent_source:
             label = self.font_sm.render(_parse_model_name(self.p1_agent_source), True, (160, 160, 160))
             self.screen.blit(label, (PREVIEW_W + (BOARD_W - label.get_width()) // 2, y))
