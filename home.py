@@ -63,7 +63,7 @@ class ModelSelector:
         self.btn_left.render(screen, font)
         self.btn_right.render(screen, font)
 
-        name = self.value or "—"
+        name = _parse_model_name(self.value)
         text = font.render(name, True, (230, 230, 230))
         screen.blit(text, (self.center_x - text.get_width() // 2, self.y + 6))
 
@@ -81,6 +81,18 @@ def _get_model_list():
     if not os.path.isdir(models_dir):
         return []
     return sorted(f for f in os.listdir(models_dir) if f.endswith(".keras"))
+
+
+def _parse_model_name(filename: str) -> str:
+    """Convert filename like 'tetris_dqn_defensive_v1.keras' to 'Defensive v1'."""
+    if not filename:
+        return "—"
+    name = filename.replace(".keras", "").replace("tetris_dqn_", "")
+    # split off version suffix like _v1, _v2
+    parts = name.rsplit("_", 1)
+    if len(parts) == 2 and parts[1].startswith("v") and parts[1][1:].isdigit():
+        return f"{parts[0].capitalize()} {parts[1].upper()}"
+    return name.capitalize()
 
 
 def run_home(
