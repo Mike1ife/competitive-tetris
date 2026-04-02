@@ -44,6 +44,7 @@ REPLAY_START = 1000
 TRAIN_EPISODES = 2000
 TARGET_UPDATE = 200
 STRATEGIES = ["neutral", "offensive", "defensive"]
+OPPONENTS = ["heuristic", "random"]
 
 
 def make_state(
@@ -228,6 +229,7 @@ def play_episode(
     agent: DQNAgent,
     pf: Pathfinder,
     strategy: Strategy,
+    opponent: str,
     strategy_name: str,
     max_pieces: int = 1000,
 ):
@@ -264,7 +266,12 @@ def play_episode(
             p2.board.copy(), p2.piece, p2.hold_piece, p2.hold_used, opp_next_info
         )
         if opp_acts:
-            for cmd in max(opp_acts, key=strategy.get_heuristic)["sequence"]:
+            opp_act = (
+                max(opp_acts, key=strategy.get_heuristic)
+                if opponent == "heuristic"
+                else random.choice(opp_acts)
+            )
+            for cmd in opp_act["sequence"]:
                 p2.execute(cmd)
             pygame.event.clear()
 
@@ -327,8 +334,18 @@ def train():
     choice = input("Enter 1/2/3: ").strip()
     while choice not in ("1", "2", "3"):
         choice = input("Invalid. Enter 1/2/3: ").strip()
+
     strategy_name = STRATEGIES[int(choice) - 1]
-    save_path = f"./models/tetris_dqn_{strategy_name}.keras"
+
+    print("Select opponent:")
+    for i, name in enumerate(OPPONENTS, 1):
+        print(f"  {i}. {name}")
+    choice = input("Enter 1/2: ").strip()
+    while choice not in ("1", "2"):
+        choice = input("Invalid. Enter 1/2: ").strip()
+
+    opponent = OPPONENTS[int(choice) - 1]
+    save_path = f"./models/tetris_dqn_{strategy_name}_vs_{opponent}.keras"
     print(f"Training: {strategy_name} → {save_path}\n")
 
     if not pygame.get_init():
@@ -351,7 +368,9 @@ def train():
         garbage = random.randint(0, 14)
         p1.respawn_garbage_lines(garbage)
 
-        total_reward = play_episode(p1, p2, agent, pf, strategy, strategy_name, max_pieces=MAX_PIECES)
+        total_reward = play_episode(
+            p1, p2, agent, pf, strategy, opponent, strategy_name, max_pieces=MAX_PIECES
+        )
 
         rewards.append(total_reward)
 
