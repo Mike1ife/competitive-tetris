@@ -99,9 +99,9 @@ def run_double_round_robin(players: dict[str, str], rounds_per_matchup: int = 1)
     print(f"Rounds each : {rounds_per_matchup}")
     print(f"Total games : {total_matches}\n")
     print(
-        f"{'Game':>5}  {'P1':<6}  {'P2':<6}  {'Winner':<8}  {'P1 Score':>10}  {'P2 Score':>10}"
+        f"{'Game':>5}  {'P1':<10}  {'P2':<10}  {'Winner':<10}  {'P1 Score':>10}  {'P2 Score':>10}"
     )
-    print("-" * 56)
+    print("-" * 62)
 
     game_num = 0
     for home, away in matchups:
@@ -126,7 +126,7 @@ def run_double_round_robin(players: dict[str, str], rounds_per_matchup: int = 1)
             stats[away]["score"] += result["p2_score"]
 
             print(
-                f"{game_num:>5}  {home:<6}  {away:<6}  {winner_label:<8}"
+                f"{game_num:>5}  {home:<10}  {away:<10}  {winner_label:<10}"
                 f"  {result['p1_score']:>10}  {result['p2_score']:>10}"
             )
 
@@ -138,14 +138,16 @@ def run_double_round_robin(players: dict[str, str], rounds_per_matchup: int = 1)
 
     games_per_player = (len(players) - 1) * 2 * rounds_per_matchup
 
-    print("\n" + "=" * 56)
+    print("\n" + "=" * 62)
     print("STANDINGS")
-    print(f"  {'Player':<8}  {'W':>4}  {'L':>4}  {'D':>4}  {'Avg Score':>10}")
-    print("  " + "-" * 38)
+    print(f"  {'Player':<10}  {'W':>4}  {'L':>4}  {'D':>4}  {'Win %':>7}  {'Avg Score':>10}")
+    print("  " + "-" * 45)
     for label, s in standings:
         avg = s["score"] / games_per_player if games_per_player else 0
+        win_pct = s["wins"] / games_per_player * 100 if games_per_player else 0
         print(
-            f"  {label:<8}  {s['wins']:>4}  {s['losses']:>4}  {s['draws']:>4}  {avg:>10.1f}"
+            f"  {label:<10}  {s['wins']:>4}  {s['losses']:>4}  {s['draws']:>4}"
+            f"  {win_pct:>6.1f}%  {avg:>10.1f}"
         )
 
     pygame.quit()
@@ -154,9 +156,9 @@ def run_double_round_robin(players: dict[str, str], rounds_per_matchup: int = 1)
 
 if __name__ == "__main__":
     players = {
-        "p1": "tetris_dqn_neutral_v3.keras",
-        "p2": "tetris_dqn_neutral_v2.keras",
-        "p3": "tetris_dqn_defensive_v1.keras",
-        "p4": "tetris_dqn_defensive_v2.keras",
+        "neu_v1": "tetris_dqn_neutral_v1.keras",
+        "neu_v2": "tetris_dqn_neutral_v2.keras",
+        "off_v2": "tetris_dqn_offensive_v2.keras",
+        "def_v2": "tetris_dqn_defensive_v2.keras",
     }
     run_double_round_robin(players, rounds_per_matchup=5)

@@ -2,12 +2,12 @@
 
 import numpy as np
 import pygame
+import time
 from config import P1_COMMANDS, P2_COMMANDS, BOARD_W, PADDING
 from tetris import Tetris
 from agents.agent import Agent
 
-NUM_GAMES = 100
-MAX_TICKS = 20000
+NUM_GAMES = 250
 MAX_PIECES = 500
 P1_MODEL = "tetris_dqn_neutral_v1.keras"
 P2_MODEL = "tetris_dqn_neutral_v2.keras"
@@ -27,9 +27,7 @@ def run_game(p1_agent, p2_agent):
     p2_combo_count = 0
     dt = 1000 // 60
 
-    for _ in range(MAX_TICKS):
-        pygame.event.clear()
-
+    while True:
         if p1.game_over or p2.game_over:
             break
         if p1_pieces >= MAX_PIECES and p2_pieces >= MAX_PIECES:
@@ -68,6 +66,9 @@ def run_game(p1_agent, p2_agent):
                         p2.execute(cmd)
                 if p2.combo > p2_prev_combo:
                     p2_combo_count += 1
+
+        p1.update(dt)
+        p2.update(dt)
 
     p1_died = p1.game_over and not p2.game_over
     p2_died = p2.game_over and not p1.game_over
@@ -139,8 +140,14 @@ def main():
     print(f"{'Game':>5}  {'Winner':<6}  {'P1 Score':>9}  {'P2 Score':>9}  {'P1 Ln':>6}  {'P2 Ln':>6}  {'P1 Garb':>7}  {'P2 Garb':>7}")
     print("-" * 68)
 
+    start_time = time.time()
+
     for i in range(1, NUM_GAMES + 1):
-        result = run_game(p1_agent, p2_agent)
+        try:
+            result = run_game(p1_agent, p2_agent)
+        except KeyboardInterrupt:
+            print(f"\n\nInterrupted after {i - 1} games")
+            break
 
         if result["winner"] == "p1":
             p1_wins += 1
@@ -171,18 +178,27 @@ def main():
             p1_clears_total[k] += result["p1_clears"].get(k, 0)
             p2_clears_total[k] += result["p2_clears"].get(k, 0)
 
+        elapsed = time.time() - start_time
+        m, s = divmod(int(elapsed), 60)
         print(
             f"{i:>5}  {result['winner']:<6}"
             f"  {result['p1_score']:>9}  {result['p2_score']:>9}"
             f"  {result['p1_lines']:>6}  {result['p2_lines']:>6}"
             f"  {result['p1_garbage_cleared']:>7}  {result['p2_garbage_cleared']:>7}"
+            f"  {m}:{s:02d}"
         )
 
+    games_played = len(p1_scores)
+    if games_played == 0:
+        print("No games completed.")
+        pygame.quit()
+        return
+
     print("\n" + "=" * 68)
-    print(f"RESULTS — {NUM_GAMES} Games")
+    print(f"RESULTS — {games_played} Games")
     print("=" * 68)
     print(f"P1 wins: {p1_wins}  P2 wins: {p2_wins}  Draws: {draws}")
-    print(f"P1 win rate: {p1_wins / NUM_GAMES * 100:.1f}%  |  P2 win rate: {p2_wins / NUM_GAMES * 100:.1f}%")
+    print(f"P1 win rate: {p1_wins / games_played * 100:.1f}%  |  P2 win rate: {p2_wins / games_played * 100:.1f}%")
     print()
     print(f"{'':16s}  {'P1':>10s}  {'P2':>10s}")
     print(f"  {'-' * 36}")
@@ -202,6 +218,10 @@ def main():
     print(f"{'Tetrises':16s}  {p1_clears_total[4]:10d}  {p2_clears_total[4]:10d}")
     print(f"{'Avg combos/game':16s}  {np.mean(p1_combo_counts):10.1f}  {np.mean(p2_combo_counts):10.1f}")
     print(f"{'Total combos':16s}  {np.sum(p1_combo_counts):10d}  {np.sum(p2_combo_counts):10d}")
+
+    total_time = time.time() - start_time
+    m, s = divmod(int(total_time), 60)
+    print(f"\nCompleted in {m}:{s:02d}")
 
     pygame.quit()
 

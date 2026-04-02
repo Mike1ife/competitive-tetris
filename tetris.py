@@ -157,11 +157,6 @@ class Tetris:
         if self.game_over or command not in self.commands:
             return
 
-        # execute pygame event
-        event, unicode = self.commands[command]
-        new_event = pygame.event.Event(event, unicode=unicode, key=ord(unicode))
-        pygame.event.post(new_event)
-
         # update piece info
         piece = self.piece
         if command == "left" and self._can_move_to(
