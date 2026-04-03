@@ -47,7 +47,7 @@ class Tetris:
         self.cell_colors = np.zeros((ROWS, COLS), dtype=int)
         self.bag = list()  # 7-bag system
         self.piece: Piece = self._respawn_piece()
-        self.hold_piece = None  # (shape, color_id) tuple
+        self.hold_piece: tuple = None  # (shape, color_id) tuple
         self.hold_used = False  # can only hold once per piece
         self.opponent: Tetris = None  # Also a Tetris object
         self.game_over = False
@@ -66,10 +66,10 @@ class Tetris:
         self.transparent_ghost = False
 
         # DAS/ARR state for left/right
-        self._held_dir = None   # "left" or "right" or None
-        self._das_timer = 0     # ms elapsed since key held
+        self._held_dir = None  # "left" or "right" or None
+        self._das_timer = 0  # ms elapsed since key held
         self._das_charged = False  # True once DAS delay has passed
-        self._arr_timer = 0     # ms elapsed since last ARR repeat
+        self._arr_timer = 0  # ms elapsed since last ARR repeat
 
     def receive_garbage(self, count: int):
         """Queue incoming garbage lines (applied on next non-clearing placement)."""
@@ -79,7 +79,7 @@ class Tetris:
         """Respawn garbage lines with consistent hole column (Jstris style)"""
         if count == 0:
             return
-        
+
         hole_col = random.randint(0, COLS - 1)
         garbage_lines = []
         for _ in range(count):
@@ -150,9 +150,13 @@ class Tetris:
     def _move_piece(self, direction: str):
         """Move the current piece left or right by one cell."""
         piece = self.piece
-        if direction == "left" and self._can_move_to(piece.shape, piece.row, piece.col - 1):
+        if direction == "left" and self._can_move_to(
+            piece.shape, piece.row, piece.col - 1
+        ):
             piece.col -= 1
-        elif direction == "right" and self._can_move_to(piece.shape, piece.row, piece.col + 1):
+        elif direction == "right" and self._can_move_to(
+            piece.shape, piece.row, piece.col + 1
+        ):
             piece.col += 1
 
     def execute(self, command: str):
@@ -270,12 +274,17 @@ class Tetris:
         if ghost_row != piece.row and not self.hide_ghost:
             if self.transparent_ghost:
                 for r, c in np.argwhere(piece.shape):
-                    surf = pygame.Surface((CELL_SIZE - 1, CELL_SIZE - 1), pygame.SRCALPHA)
+                    surf = pygame.Surface(
+                        (CELL_SIZE - 1, CELL_SIZE - 1), pygame.SRCALPHA
+                    )
                     surf.fill((*COLORS[piece.color_id], 20))
-                    screen.blit(surf, (
-                        self.x_offset + (piece.col + c) * CELL_SIZE,
-                        (ghost_row + r) * CELL_SIZE,
-                    ))
+                    screen.blit(
+                        surf,
+                        (
+                            self.x_offset + (piece.col + c) * CELL_SIZE,
+                            (ghost_row + r) * CELL_SIZE,
+                        ),
+                    )
             else:
                 ghost_fill = tuple(c // 4 for c in COLORS[piece.color_id])
                 ghost_border = tuple(c // 2 for c in COLORS[piece.color_id])
@@ -325,11 +334,15 @@ class Tetris:
                 (self.x_offset + BOARD_W // 2 - message.get_width() // 2, BOARD_H // 2),
             )
 
-    def render_preview(self, screen: pygame.surface.Surface, font: pygame.font.Font, preview_x: int):
+    def render_preview(
+        self, screen: pygame.surface.Surface, font: pygame.font.Font, preview_x: int
+    ):
         """Render next piece and hold piece preview at the given x position."""
         # HOLD label and box
         hold_label = font.render("HOLD", True, (200, 200, 200))
-        screen.blit(hold_label, (preview_x + PREVIEW_W // 2 - hold_label.get_width() // 2, 30))
+        screen.blit(
+            hold_label, (preview_x + PREVIEW_W // 2 - hold_label.get_width() // 2, 30)
+        )
 
         hold_box = pygame.Rect(preview_x + 5, 55, PREVIEW_W - 10, PREVIEW_W - 10)
         pygame.draw.rect(screen, (50, 50, 50), hold_box, border_radius=4)
@@ -355,9 +368,14 @@ class Tetris:
         # NEXT label and box
         next_label = font.render("NEXT", True, (200, 200, 200))
         next_y = 155
-        screen.blit(next_label, (preview_x + PREVIEW_W // 2 - next_label.get_width() // 2, next_y))
+        screen.blit(
+            next_label,
+            (preview_x + PREVIEW_W // 2 - next_label.get_width() // 2, next_y),
+        )
 
-        next_box = pygame.Rect(preview_x + 5, next_y + 25, PREVIEW_W - 10, PREVIEW_W - 10)
+        next_box = pygame.Rect(
+            preview_x + 5, next_y + 25, PREVIEW_W - 10, PREVIEW_W - 10
+        )
         pygame.draw.rect(screen, (50, 50, 50), next_box, border_radius=4)
         pygame.draw.rect(screen, (80, 80, 80), next_box, 1, border_radius=4)
 
@@ -380,8 +398,17 @@ class Tetris:
         if self.combo > 0:
             combo_label = font.render("Combo", True, (255, 200, 0))
             combo_num = font.render(f"x{self.combo}", True, (255, 200, 0))
-            screen.blit(combo_label, (preview_x + PREVIEW_W // 2 - combo_label.get_width() // 2, next_y + 110))
-            screen.blit(combo_num, (preview_x + PREVIEW_W // 2 - combo_num.get_width() // 2, next_y + 130))
+            screen.blit(
+                combo_label,
+                (
+                    preview_x + PREVIEW_W // 2 - combo_label.get_width() // 2,
+                    next_y + 110,
+                ),
+            )
+            screen.blit(
+                combo_num,
+                (preview_x + PREVIEW_W // 2 - combo_num.get_width() // 2, next_y + 130),
+            )
 
     def _get_next_piece_info(self):
         """Peek at next piece in bag without removing it."""
@@ -426,7 +453,9 @@ class Tetris:
             rotated_shape = np.rot90(shape, axes=(1, 0))
             target_rot = (current_rot + 1) % 4
             kicked = False
-            for drow, dcol in self._get_kick_offsets(piece.color_id, current_rot, target_rot):
+            for drow, dcol in self._get_kick_offsets(
+                piece.color_id, current_rot, target_rot
+            ):
                 new_row = row + drow
                 new_col = col + dcol
                 if self._can_move_to(rotated_shape, new_row, new_col):
