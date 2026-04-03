@@ -44,7 +44,7 @@ REPLAY_START = 1000
 TRAIN_EPISODES = 3000
 TARGET_UPDATE = 200
 STRATEGIES = ["neutral", "offensive", "defensive"]
-OPPONENTS = ["heuristic", "random", "agent"]
+OPPONENTS = ["heuristic", "random", "agent", "hybrid"]
 
 
 class DQNAgent:
@@ -435,8 +435,8 @@ def train():
     for i, name in enumerate(OPPONENTS, 1):
         print(f"  {i}. {name}")
     choice = input("Enter 1/2/3: ").strip()
-    while choice not in ("1", "2", "3"):
-        choice = input("Invalid. Enter 1/2/3: ").strip()
+    while choice not in ("1", "2", "3", "4"):
+        choice = input("Invalid. Enter 1/2/3/4: ").strip()
 
     opponent_role = OPPONENTS[int(choice) - 1]
     save_path = f"./models/tetris_dqn_{strategy_name}_vs_{opponent_role}.keras"
@@ -468,7 +468,11 @@ def train():
             agent=agent,
             pf=pf,
             strategy=strategy,
-            opponent_role=opponent_role,
+            opponent_role=(
+                opponent_role
+                if opponent_role != "hybrid"
+                else ("heuristic" if ep < EPSILON_STOP_EP else "agent")
+            ),
             strategy_name=strategy_name,
             max_pieces=MAX_PIECES,
         )
