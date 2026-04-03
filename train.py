@@ -337,6 +337,7 @@ def _play_episode(
             model=agent.target_model,
             pf=pf,
             role=opponent_role,
+            strategy=strategy,
             explore=False,
         )
         if p2_action:
