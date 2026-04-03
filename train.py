@@ -75,26 +75,32 @@ class DQNAgent:
         model: keras.Model,
         actions: list,
         piece: Piece,
-        opp_agg: int,
+        opponent_height: int,
         hold_piece: tuple = None,
         hold_used: bool = False,
+        next_piece_info: tuple = None,
         explore: bool = True,
     ) -> dict:
         if explore and random.random() < self.epsilon:
             return random.choice(actions)
-        states = np.array(
-            [
+
+        states = []
+        for action in actions:
+            placed = _placed_piece(action, piece, hold_piece, next_piece_info)
+            after_hold_piece, after_hold_used = _after_hold_state(
+                action, piece, hold_piece, hold_used
+            )
+            states.append(
                 _make_state(
-                    a["board_result"],
-                    a["lines_cleared"],
-                    piece,
-                    opp_agg,
-                    hold_piece,
-                    hold_used,
+                    action["board_result"],
+                    action["lines_cleared"],
+                    placed,
+                    opponent_height,
+                    after_hold_piece,
+                    after_hold_used,
                 )
-                for a in actions
-            ]
-        )
+            )
+        states = np.array(states)
         qs = model(states, training=False).numpy().flatten()
         return actions[int(np.argmax(qs))]
 
@@ -119,21 +125,31 @@ class DQNAgent:
                     b["next_piece_info"],
                 )
                 if not next_actions:
-                    target = e["reward"]
+                    target = b["reward"]
                 else:
-                    next_states = np.array(
-                        [
+                    next_states = []
+                    for action in next_actions:
+                        placed = _placed_piece(
+                            action,
+                            b["next_piece"],
+                            b["hold_piece"],
+                            b["next_piece_info"],
+                        )
+                        after_hold_piece, after_hold_used = _after_hold_state(
+                            action, b["next_piece"], b["hold_piece"], b["hold_used"]
+                        )
+
+                        next_states.append(
                             _make_state(
-                                a["board_result"],
-                                a["lines_cleared"],
-                                b["next_piece"],
-                                b["opp_agg"],
-                                b["hold_piece"],
-                                b["hold_used"],
+                                action["board_result"],
+                                action["lines_cleared"],
+                                placed,
+                                b["opponent_height"],
+                                after_hold_piece,
+                                after_hold_used,
                             )
-                            for a in next_actions
-                        ]
-                    )
+                        )
+                    next_states = np.array(next_states)
                     target = b["reward"] + DISCOUNT * np.max(
                         self.target_model(next_states, training=False).numpy().flatten()
                     )
@@ -167,22 +183,45 @@ def _placed_piece(
     return piece
 
 
+def _after_hold_state(action: dict, piece: Piece, hold_piece: tuple, hold_used: bool):
+    """Return the actual hold state after this action.
+
+    action: action being taken
+    piece: actual piece placed by this action
+    hold_piece: info of piece been held when placing piece
+    hold_used: if hold is used when placing piece
+    """
+    if action["sequence"] and action["sequence"][0] == "hold":
+        new_hold_piece = (piece.shape, piece.color_id)
+        new_hold_used = True
+        return new_hold_piece, new_hold_used
+    return hold_piece, hold_used
+
+
 def _make_state(
     board: np.ndarray,
     lines_cleared: int,
     piece: Piece,
-    opp_agg: int,
+    opponent_height: int,
     hold_piece: tuple = None,
     hold_used: bool = False,
 ) -> np.ndarray:
-    """Build a state vector from post-action board features."""
+    """Build a state vector from post-action board features.
+
+    board: resultant board after placed piece
+    lines_cleared: number of line cleared after placed piece
+    piece: actual placed piece
+    opponent_height: opponent's board height at the time agent decide to place piece
+    hold_piece: info of piece been held after placing piece
+    hold_used: if hold is used after placing piece
+    """
     heights = np.zeros(COLS, dtype=int)
     for col in range(COLS):
         for row in range(ROWS):
             if board[row][col]:
                 heights[col] = ROWS - row
                 break
-    agg = int(heights.max())
+    height = int(heights.max())
     bump = int(sum(abs(heights[c] - heights[c + 1]) for c in range(COLS - 1)))
     holes = sum(
         1
@@ -191,7 +230,7 @@ def _make_state(
         for r in range(ROWS - heights[c], ROWS)
         if not board[r][c]
     )
-    own = np.array([agg, holes, bump, lines_cleared], dtype=np.float32)
+    own = np.array([height, holes, bump, lines_cleared], dtype=np.float32)
 
     piece_oh = np.zeros(NUM_PIECES, dtype=np.float32)
     piece_oh[piece.color_id - 1] = 1.0
@@ -203,7 +242,7 @@ def _make_state(
 
     hold_avail = np.array([0.0 if hold_used else 1.0], dtype=np.float32)
 
-    return np.concatenate([own, piece_oh, hold_oh, [opp_agg], hold_avail])
+    return np.concatenate([own, piece_oh, hold_oh, [opponent_height], hold_avail])
 
 
 def _choose_action(
@@ -232,14 +271,21 @@ def _choose_action(
     elif role == "heuristic":
         return max(actions, key=strategy.get_heuristic)
 
-    opp_agg = opponent.get_game_state()["max_height"]
+    opponent_height = opponent.get_game_state()["max_height"]
 
     snap_piece = player.piece
     snap_hold = player.hold_piece
     snap_hold_used = player.hold_used
 
     return agent.best_action(
-        model, actions, snap_piece, opp_agg, snap_hold, snap_hold_used, explore
+        model,
+        actions,
+        snap_piece,
+        opponent_height,
+        snap_hold,
+        snap_hold_used,
+        snap_next,
+        explore,
     )
 
 
@@ -263,6 +309,7 @@ def _play_episode(
         snap_piece = p1.piece
         snap_hold = p1.hold_piece
         snap_next = p1._get_next_piece_info()
+        p2_height = p2.get_game_state()["max_height"]
 
         # P1 Action
         p1_action = _choose_action(
@@ -300,8 +347,6 @@ def _play_episode(
         garbage_cleared = p1.garbage_lines_cleared - garbage_before
         total_cleared = normal_cleared + garbage_cleared
 
-        opp_agg_after = p2.get_game_state()["max_height"]
-
         gs = p1.get_game_state()
         height_delta = gs["max_height"] - prev_height
 
@@ -328,7 +373,7 @@ def _play_episode(
             p1_action["board_result"],
             total_cleared,
             placed,
-            opp_agg_after,
+            p2_height,
             p1.hold_piece,
             p1.hold_used,
         )
@@ -338,7 +383,7 @@ def _play_episode(
             done=done,
             next_board=p1.board.copy(),
             next_piece=p1.piece.copy(),
-            opp_agg=opp_agg_after,
+            opponent_height=p2_height,
             hold_piece=p1.hold_piece,
             hold_used=p1.hold_used,
             next_piece_info=p1._get_next_piece_info(),
