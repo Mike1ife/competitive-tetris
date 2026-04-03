@@ -35,7 +35,7 @@ STATE_SIZE = 4 + NUM_PIECES + NUM_PIECES + 1 + 1
 MEM_SIZE = 50000
 BATCH_SIZE = 128
 MAX_PIECES = 250
-DISCOUNT = 0.95
+DISCOUNT = 0.8
 EPOCHS = 1
 EPSILON_START = 1.0
 EPSILON_MIN = 0.05
@@ -67,7 +67,7 @@ class DQNAgent:
                 keras.layers.Dense(1, activation="linear"),
             ]
         )
-        model.compile(loss="huber", optimizer=keras.optimizers.Adam(learning_rate=1e-3))
+        model.compile(loss="huber", optimizer=keras.optimizers.Adam(learning_rate=1e-4))
         return model
 
     def best_action(
