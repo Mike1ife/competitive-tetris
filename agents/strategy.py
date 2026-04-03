@@ -60,23 +60,16 @@ class Strategy:
         max_height: int,
         height_delta: int,
     ):
-        line_rewards = {0: 0, 1: -50, 2: 800, 3: 2000, 4: 6000}
+        single_penalty = -150 if total_cleared == 1 else 0
         attack_table = {0: 0, 1: 0, 2: 1, 3: 2, 4: 4}
         garbage_send = attack_table.get(total_cleared, 4)
-        
-        # escalating pressure: stacking gets exponentially costly
-        height_pressure = 0.0
-        if max_height > 10:
-            height_pressure = (max_height - 10) ** 2 * 0.5
-
         return (
-            line_rewards.get(total_cleared, 6000)
-            + garbage_send * 500
-            - holes * 4.0
-            - bumpiness * 0.5
-            - max(height_delta, 0) * 2.5
+            single_penalty
+            + garbage_send * 1000
+            - holes * 5.0
+            - bumpiness * 0.8
+            - max(height_delta, 0) * 2.0
             - min(height_delta, 0) * 0.5
-            - height_pressure
         )
 
     def _get_defensive_reward(
