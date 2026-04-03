@@ -60,17 +60,17 @@ class Strategy:
         max_height: int,
         height_delta: int,
     ):
-        single_penalty = -150 if total_cleared == 1 else 0
         attack_table = {0: 0, 1: 0, 2: 1, 3: 2, 4: 4}
         garbage_send = attack_table.get(total_cleared, 4)
         return (
-            single_penalty
-            + garbage_send * 1000
-            - holes * 5.0
-            - bumpiness * 0.8
-            - max(height_delta, 0) * 2.0
+            garbage_send * 800
+            - holes * 3.0
+            - bumpiness * 0.3
+            - max_height * 0.2
+            - max(height_delta, 0) * 1.5
             - min(height_delta, 0) * 0.5
         )
+
 
     def _get_defensive_reward(
         self,

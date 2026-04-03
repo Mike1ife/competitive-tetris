@@ -12,47 +12,41 @@ class Decider:
     def __init__(self, source: str):
         self.model = keras.models.load_model(f"./models/{source}")
 
-    def get_sequence(self, actions: list, piece: Piece, opp_agg: int = 0,
-                     hold_piece=None, hold_used=False, next_piece_info=None) -> list:
+    def get_sequence(self, actions, piece, opp_agg=0,
+                     hold_piece=None, hold_used=False, next_piece_info=None):
         if not actions:
             return []
-
         states = np.array([
-            self._make_state(
-                a,
-                self._placed_piece(a, piece, hold_piece, next_piece_info),
-                opp_agg, hold_piece, hold_used
-            )
+            self._build_action_state(a, piece, opp_agg, hold_piece, hold_used, next_piece_info)
             for a in actions
         ])
         qs = self.model(states, training=False).numpy().flatten()
         return actions[int(np.argmax(qs))]["sequence"]
 
-    def get_best_action(self, actions: list, piece: Piece, opp_agg: int = 0,
-                        hold_piece=None, hold_used=False, next_piece_info=None) -> dict | None:
-        """Return the full action dict for the best placement."""
+    def get_best_action(self, actions, piece, opp_agg=0,
+                        hold_piece=None, hold_used=False, next_piece_info=None):
         if not actions:
             return None
-
         states = np.array([
-            self._make_state(
-                a,
-                self._placed_piece(a, piece, hold_piece, next_piece_info),
-                opp_agg, hold_piece, hold_used
-            )
+            self._build_action_state(a, piece, opp_agg, hold_piece, hold_used, next_piece_info)
             for a in actions
         ])
         qs = self.model(states, training=False).numpy().flatten()
         return actions[int(np.argmax(qs))]
 
-    def _placed_piece(self, action, piece, hold_piece, next_piece_info):
-        """Return the Piece that was actually placed for this action."""
+    def _build_action_state(self, action, piece, opp_agg, hold_piece, hold_used, next_piece_info):
+        placed, after_hold, after_used = self._placed_piece(action, piece, hold_piece, hold_used, next_piece_info)
+        return self._make_state(action, placed, opp_agg, after_hold, after_used)
+
+    def _placed_piece(self, action, piece, hold_piece, hold_used, next_piece_info):
         if action["sequence"] and action["sequence"][0] == "hold":
+            new_hold_piece = (piece.shape, piece.color_id)
+            new_hold_used = True
             if hold_piece is not None:
-                return Piece(hold_piece[0], hold_piece[1])
+                return Piece(hold_piece[0], hold_piece[1]), new_hold_piece, new_hold_used
             elif next_piece_info is not None:
-                return Piece(next_piece_info[0], next_piece_info[1])
-        return piece
+                return Piece(next_piece_info[0], next_piece_info[1]), new_hold_piece, new_hold_used
+        return piece, hold_piece, hold_used
 
     def _make_state(self, action: dict, piece: Piece, opp_agg: int,
                     hold_piece=None, hold_used=False) -> np.ndarray:

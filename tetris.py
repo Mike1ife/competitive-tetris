@@ -64,6 +64,8 @@ class Tetris:
         self.accelerate = False
         self.hide_ghost = False
         self.transparent_ghost = False
+        self._lock_timer = 0
+        self._locking = False
 
         # DAS/ARR state for left/right
         self._held_dir = None  # "left" or "right" or None
@@ -96,12 +98,14 @@ class Tetris:
         if self.hold_used:
             return
         self.hold_used = True
+        # Store the original (unrotated) shape from TETROMINOS
+        original_shape = TETROMINOS[self.piece.color_id - 1][0]
         if self.hold_piece is None:
-            self.hold_piece = (self.piece.shape.copy(), self.piece.color_id)
+            self.hold_piece = (original_shape.copy(), self.piece.color_id)
             self.piece = self._respawn_piece()
         else:
             old_shape, old_color = self.hold_piece
-            self.hold_piece = (self.piece.shape.copy(), self.piece.color_id)
+            self.hold_piece = (original_shape.copy(), self.piece.color_id)
             self.piece = Piece(old_shape, old_color)
 
     def _get_dir_for_key(self, key):
@@ -193,6 +197,8 @@ class Tetris:
             while self._can_move_to(piece.shape, piece.row + 1, piece.col):
                 piece.row += 1
             self.score += 2 * (piece.row - drop_start)
+            self._locking = False
+            self._lock_timer = 0
             self._place()
 
     def update(self, delta: int):
@@ -229,11 +235,26 @@ class Tetris:
         if self._fall_timer >= interval:
             self._fall_timer = 0
             piece = self.piece
-            # move downward, if cannot, place it
+            # move downward, if cannot, start lock delay
             if self._can_move_to(piece.shape, piece.row + 1, piece.col):
                 piece.row += 1
+                self._locking = False
+                self._lock_timer = 0
+            elif not self._locking:
+                self._locking = True
+                self._lock_timer = 0
+
+        # lock delay: place after 500ms on ground, reset if piece moves
+        if self._locking:
+            piece = self.piece
+            if self._can_move_to(piece.shape, piece.row + 1, piece.col):
+                # piece was moved off the ground (e.g. rotated up), cancel lock
+                self._locking = False
+                self._lock_timer = 0
             else:
-                self._place()
+                self._lock_timer += delta
+                if self._lock_timer >= 500:
+                    self._place()
 
     def _snap_piece(self, direction: str):
         """Move piece as far as possible in the given direction (ARR=0 behavior)."""
@@ -471,6 +492,8 @@ class Tetris:
 
     def _place(self):
         """Place a piece"""
+        self._locking = False
+        self._lock_timer = 0
         piece = self.piece
         for r, c in np.argwhere(piece.shape):
             row = piece.row + r
