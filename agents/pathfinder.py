@@ -89,16 +89,14 @@ class Pathfinder:
                 return i
         return 0
 
-    def _can_move_to(
-        self, board: np.ndarray, shape: np.ndarray, row: int, col: int
-    ) -> bool:
+    def _can_move_to(self, board, shape, row, col):
         rows, cols = board.shape
         for r, c in np.argwhere(shape):
             new_row = row + r
             new_col = col + c
-            if new_row < 0 or new_row >= rows or new_col < 0 or new_col >= cols:
+            if new_row >= rows or new_col < 0 or new_col >= cols:
                 return False
-            if board[new_row][new_col]:
+            if new_row >= 0 and board[new_row][new_col]:
                 return False
         return True
 

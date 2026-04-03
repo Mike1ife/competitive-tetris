@@ -24,8 +24,10 @@ class Piece:
     def __init__(self, shape: np.ndarray, color_id: int):
         self.shape = shape.copy()
         self.color_id = color_id
-        # Generate at the middle of the top
-        self.row = 0
+        # Spawn so bottom of piece is at row 0 (top of visible board)
+        filled_rows = np.argwhere(shape)[:, 0]
+        max_r = int(filled_rows.max())
+        self.row = -max_r
         self.col = COLS // 2 - shape.shape[1] // 2
         self.rotation_id = 0
 
@@ -98,14 +100,12 @@ class Tetris:
         if self.hold_used:
             return
         self.hold_used = True
-        # Store the original (unrotated) shape from TETROMINOS
-        original_shape = TETROMINOS[self.piece.color_id - 1][0]
         if self.hold_piece is None:
-            self.hold_piece = (original_shape.copy(), self.piece.color_id)
+            self.hold_piece = (self.piece.shape.copy(), self.piece.color_id)
             self.piece = self._respawn_piece()
         else:
             old_shape, old_color = self.hold_piece
-            self.hold_piece = (original_shape.copy(), self.piece.color_id)
+            self.hold_piece = (self.piece.shape.copy(), self.piece.color_id)
             self.piece = Piece(old_shape, old_color)
 
     def _get_dir_for_key(self, key):
@@ -295,6 +295,9 @@ class Tetris:
         if ghost_row != piece.row and not self.hide_ghost:
             if self.transparent_ghost:
                 for r, c in np.argwhere(piece.shape):
+                    gr = ghost_row + r
+                    if gr < 0:
+                        continue
                     surf = pygame.Surface(
                         (CELL_SIZE - 1, CELL_SIZE - 1), pygame.SRCALPHA
                     )
@@ -303,27 +306,33 @@ class Tetris:
                         surf,
                         (
                             self.x_offset + (piece.col + c) * CELL_SIZE,
-                            (ghost_row + r) * CELL_SIZE,
+                            gr * CELL_SIZE,
                         ),
                     )
             else:
                 ghost_fill = tuple(c // 4 for c in COLORS[piece.color_id])
                 ghost_border = tuple(c // 2 for c in COLORS[piece.color_id])
                 for r, c in np.argwhere(piece.shape):
+                    gr = ghost_row + r
+                    if gr < 0:
+                        continue
                     rect = pygame.Rect(
                         self.x_offset + (piece.col + c) * CELL_SIZE,
-                        (ghost_row + r) * CELL_SIZE,
+                        gr * CELL_SIZE,
                         CELL_SIZE - 1,
                         CELL_SIZE - 1,
                     )
                     pygame.draw.rect(screen, ghost_fill, rect)
                     pygame.draw.rect(screen, ghost_border, rect, 1)
 
-        # draw current piece
+        # draw current piece (skip cells above board)
         for r, c in np.argwhere(piece.shape):
+            pr = piece.row + r
+            if pr < 0:
+                continue
             rect = pygame.Rect(
                 self.x_offset + (piece.col + c) * CELL_SIZE,
-                (piece.row + r) * CELL_SIZE,
+                pr * CELL_SIZE,
                 CELL_SIZE - 1,
                 CELL_SIZE - 1,
             )
@@ -371,7 +380,9 @@ class Tetris:
         pygame.draw.rect(screen, border_color, hold_box, 1, border_radius=4)
 
         if self.hold_piece is not None:
-            shape, color_id = self.hold_piece
+            # Display original (unrotated) shape for preview
+            _, color_id = self.hold_piece
+            shape = TETROMINOS[color_id - 1][0]
             piece_h, piece_w = shape.shape
             cell = 18
             start_x = preview_x + PREVIEW_W // 2 - (piece_w * cell) // 2
@@ -448,13 +459,13 @@ class Tetris:
         return Piece(shape, color_id)
 
     def _can_move_to(self, shape: np.ndarray, row: int, col: int) -> bool:
-        """Check whether we can move shape to (row, col)"""
+        """Check whether we can move shape to (row, col). Allows negative rows (above board)."""
         for r, c in np.argwhere(shape):
             new_row = row + r
             new_col = col + c
-            if new_row < 0 or new_row >= ROWS or new_col < 0 or new_col >= COLS:
+            if new_row >= ROWS or new_col < 0 or new_col >= COLS:
                 return False
-            if self.board[new_row][new_col]:
+            if new_row >= 0 and self.board[new_row][new_col]:
                 return False
         return True
 

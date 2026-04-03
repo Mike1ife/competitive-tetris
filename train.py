@@ -32,9 +32,9 @@ OPP_COMMANDS = {
 NUM_PIECES = len(TETROMINOS)  # 7
 # board features(4) + current piece one-hot(7) + hold piece one-hot(7) + opp height(1) + hold_available(1)
 STATE_SIZE = 4 + NUM_PIECES + NUM_PIECES + 1 + 1
-MEM_SIZE = 20000
+MEM_SIZE = 50000
 BATCH_SIZE = 128
-MAX_PIECES = 200
+MAX_PIECES = 250
 DISCOUNT = 0.95
 EPOCHS = 1
 EPSILON_START = 1.0
