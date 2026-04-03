@@ -86,9 +86,8 @@ class DQNAgent:
 
         states = []
         for action in actions:
-            placed = _placed_piece(action, piece, hold_piece, next_piece_info)
-            after_hold_piece, after_hold_used = _after_hold_state(
-                action, piece, hold_piece, hold_used
+            placed, after_hold_piece, after_hold_used = _placed_piece(
+                action, piece, hold_piece, hold_used, next_piece_info
             )
             states.append(
                 _make_state(
@@ -128,21 +127,19 @@ class DQNAgent:
                     target = b["reward"]
                 else:
                     next_states = []
-                    for action in next_actions:
-                        placed = _placed_piece(
-                            action,
+                    for next_action in next_actions:
+                        placed, after_hold_piece, after_hold_used = _placed_piece(
+                            next_action,
                             b["next_piece"],
                             b["hold_piece"],
+                            b["hold_used"],
                             b["next_piece_info"],
-                        )
-                        after_hold_piece, after_hold_used = _after_hold_state(
-                            action, b["next_piece"], b["hold_piece"], b["hold_used"]
                         )
 
                         next_states.append(
                             _make_state(
-                                action["board_result"],
-                                action["lines_cleared"],
+                                next_action["board_result"],
+                                next_action["lines_cleared"],
                                 placed,
                                 b["opponent_height"],
                                 after_hold_piece,
@@ -172,30 +169,33 @@ class DQNAgent:
 
 
 def _placed_piece(
-    action: dict, piece: Piece, hold_piece: tuple, next_piece_info: tuple
+    action: dict,
+    piece: Piece,
+    hold_piece: tuple,
+    hold_used: bool,
+    next_piece_info: tuple,
 ) -> Piece:
-    """Return the Piece that was actually placed for this action."""
-    if action["sequence"] and action["sequence"][0] == "hold":
-        if hold_piece is not None:
-            return Piece(hold_piece[0], hold_piece[1])
-        elif next_piece_info is not None:
-            return Piece(next_piece_info[0], next_piece_info[1])
-    return piece
-
-
-def _after_hold_state(action: dict, piece: Piece, hold_piece: tuple, hold_used: bool):
-    """Return the actual hold state after this action.
+    """Return the Piece that was actually placed for this action and post-hold state.
 
     action: action being taken
     piece: actual piece placed by this action
     hold_piece: info of piece been held when placing piece
     hold_used: if hold is used when placing piece
+    next_piece_info: info of next piece before placing
     """
     if action["sequence"] and action["sequence"][0] == "hold":
         new_hold_piece = (piece.shape, piece.color_id)
         new_hold_used = True
-        return new_hold_piece, new_hold_used
-    return hold_piece, hold_used
+
+        if hold_piece is not None:
+            return Piece(hold_piece[0], hold_piece[1]), new_hold_piece, new_hold_used
+        elif next_piece_info is not None:
+            return (
+                Piece(next_piece_info[0], next_piece_info[1]),
+                new_hold_piece,
+                new_hold_used,
+            )
+    return piece, hold_piece, hold_used
 
 
 def _make_state(
@@ -308,6 +308,7 @@ def _play_episode(
         garbage_before = p1.garbage_lines_cleared
         snap_piece = p1.piece
         snap_hold = p1.hold_piece
+        snap_used = p1.hold_used
         snap_next = p1._get_next_piece_info()
         p2_height = p2.get_game_state()["max_height"]
 
@@ -368,14 +369,16 @@ def _play_episode(
 
         done = p1.game_over or p2.game_over
 
-        placed = _placed_piece(p1_action, snap_piece, snap_hold, snap_next)
+        placed, after_hold_piece, after_hold_used = _placed_piece(
+            p1_action, snap_piece, snap_hold, snap_used, snap_next
+        )
         action_state = _make_state(
             p1_action["board_result"],
             total_cleared,
             placed,
             p2_height,
-            p1.hold_piece,
-            p1.hold_used,
+            after_hold_piece,
+            after_hold_used,
         )
         agent.remember(
             action_state=action_state,
