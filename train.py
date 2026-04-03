@@ -29,19 +29,19 @@ OPP_COMMANDS = {
     "drop": (0, "0"),
 }
 
-NUM_PIECES = len(TETROMINOS)  # 7x
+NUM_PIECES = len(TETROMINOS)  # 7
 # board features(4) + current piece one-hot(7) + hold piece one-hot(7) + opp height(1) + hold_available(1)
 STATE_SIZE = 4 + NUM_PIECES + NUM_PIECES + 1 + 1
-MEM_SIZE = 50000
-BATCH_SIZE = 64
-MAX_PIECES = 500
-DISCOUNT = 0.97
+MEM_SIZE = 20000
+BATCH_SIZE = 128
+MAX_PIECES = 200
+DISCOUNT = 0.95
 EPOCHS = 1
 EPSILON_START = 1.0
 EPSILON_MIN = 0.05
-EPSILON_STOP_EP = 4000
+EPSILON_STOP_EP = 2000
 REPLAY_START = 1000
-TRAIN_EPISODES = 5000
+TRAIN_EPISODES = 2500
 TARGET_UPDATE = 200
 STRATEGIES = ["neutral", "offensive", "defensive"]
 OPPONENTS = ["heuristic", "random", "agent"]
@@ -380,13 +380,16 @@ def _play_episode(
             after_hold_piece,
             after_hold_used,
         )
+        # remember post state
+        # we use memory to sample next_state and get next_action
+        # so when making action at next_state (post state), the agent needs post-opponent height
         agent.remember(
             action_state=action_state,
             reward=reward,
             done=done,
             next_board=p1.board.copy(),
             next_piece=p1.piece.copy(),
-            opponent_height=p2_height,
+            opponent_height=p2.get_game_state()["max_height"],
             hold_piece=p1.hold_piece,
             hold_used=p1.hold_used,
             next_piece_info=p1._get_next_piece_info(),
