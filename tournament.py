@@ -35,9 +35,11 @@ def run_headless_round(
                 p1_pieces += 1
                 if p1_pieces <= max_pieces:
                     cmds = p1_agent.get_command_sequence(
-                        p1.board.copy(), p1.piece,
+                        p1.board.copy(),
+                        p1.piece,
                         p2.get_game_state()["max_height"],
-                        p1.hold_piece, p1.hold_used,
+                        p1.hold_piece,
+                        p1.hold_used,
                         p1._get_next_piece_info(),
                     )
                     for cmd in cmds:
@@ -50,9 +52,11 @@ def run_headless_round(
                 p2_pieces += 1
                 if p2_pieces <= max_pieces:
                     cmds = p2_agent.get_command_sequence(
-                        p2.board.copy(), p2.piece,
+                        p2.board.copy(),
+                        p2.piece,
                         p1.get_game_state()["max_height"],
-                        p2.hold_piece, p2.hold_used,
+                        p2.hold_piece,
+                        p2.hold_used,
                         p2._get_next_piece_info(),
                     )
                     for cmd in cmds:
@@ -140,7 +144,9 @@ def run_double_round_robin(players: dict[str, str], rounds_per_matchup: int = 1)
 
     print("\n" + "=" * 62)
     print("STANDINGS")
-    print(f"  {'Player':<10}  {'W':>4}  {'L':>4}  {'D':>4}  {'Win %':>7}  {'Avg Score':>10}")
+    print(
+        f"  {'Player':<10}  {'W':>4}  {'L':>4}  {'D':>4}  {'Win %':>7}  {'Avg Score':>10}"
+    )
     print("  " + "-" * 45)
     for label, s in standings:
         avg = s["score"] / games_per_player if games_per_player else 0
@@ -156,9 +162,7 @@ def run_double_round_robin(players: dict[str, str], rounds_per_matchup: int = 1)
 
 if __name__ == "__main__":
     players = {
-        "neu_v1": "tetris_dqn_neutral_v1.keras",
-        "neu_v2": "tetris_dqn_neutral_v2.keras",
-        "off_v2": "tetris_dqn_offensive_v2.keras",
-        "def_v2": "tetris_dqn_defensive_v2.keras",
+        "neu_v1": "tetris_dqn_neutral_vs_hybrid.keras",
+        "neu_v2": "tetris_dqn_neutral_vs_heuristic_v1.keras",
     }
     run_double_round_robin(players, rounds_per_matchup=10)
