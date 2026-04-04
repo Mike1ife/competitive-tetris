@@ -60,12 +60,19 @@ class Strategy:
         max_height: int,
         height_delta: int,
     ):
-        line_rewards = {0: 0, 1: -10, 2: 600, 3: 1500, 4: 5000}
+        line_rewards = {0: 0, 1: -20, 2: 600, 3: 1500, 4: 5000}
         attack_table = {0: 0, 1: 0, 2: 1, 3: 2, 4: 4}
         garbage_send = attack_table.get(total_cleared, 4)
+
+        if max_height > 12 and total_cleared > 0:
+            urgency_bonus = (max_height - 12) * 100
+        else:
+            urgency_bonus = 0
+
         return (
             line_rewards.get(total_cleared, 5000)
             + garbage_send * 400
+            + urgency_bonus
             - holes * 3.0
             - bumpiness * 0.5
             - max(height_delta, 0) * 2.0
