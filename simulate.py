@@ -10,7 +10,7 @@ from agents.agent import Agent
 NUM_GAMES = 100
 MAX_PIECES = 500
 P1_MODEL = "tetris_dqn_neutral_vs_heuristic_v1.keras"
-P2_MODEL = "tetris_dqn_offensive_v2.keras"
+P2_MODEL = "tetris_dqn_offensive_vs_heuristic.keras"
 
 
 def run_game(p1_agent, p2_agent):
