@@ -1,0 +1,11 @@
+player,model,wins,losses,draws,kills,win_pct,avg_score,avg_lines,avg_garbage_sent,lines_per_piece,singles,doubles,triples,tetrises,total_combos,combos_per_game
+off_vs_heu_v1,tetris_dqn_offensive_vs_heuristic_v1.keras,345,195,0,344,63.9,10069.6,63.8,38.1,0.532,23538,3276,615,631,28060,52.0
+off_vs_heu_v3,tetris_dqn_offensive_vs_heuristic_v3.keras,324,216,0,324,60.0,10375.4,66.9,38.8,0.54,22040,3896,828,949,27713,51.3
+off_vs_hyb_v3,tetris_dqn_offensive_vs_hybrid_v3.keras,306,234,0,306,56.7,10018.2,63.7,36.5,0.53,23256,3392,659,600,27907,51.7
+neu_vs_hyb_v1,tetris_dqn_neutral_vs_hybrid_v1.keras,306,234,0,306,56.7,9699.3,61.4,35.8,0.528,22406,3111,601,683,26801,49.6
+off_vs_heu_v2,tetris_dqn_offensive_vs_heuristic_v2.keras,292,248,0,292,54.1,9591.0,59.6,35.2,0.519,23426,2768,470,458,27122,50.2
+off_vs_hyb_v2,tetris_dqn_offensive_vs_hybrid_v2.keras,277,263,0,277,51.3,9327.5,58.3,34.3,0.519,22592,2671,512,506,26281,48.7
+neu_vs_heu_v2,tetris_dqn_neutral_vs_heuristic_v2.keras,276,264,0,276,51.1,9438.8,59.1,34.0,0.518,22515,2853,510,538,26416,48.9
+neu_vs_heu_v1,tetris_dqn_neutral_vs_heuristic_v1.keras,212,328,0,212,39.3,9651.5,60.4,33.3,0.513,12742,7124,1077,605,21548,39.9
+def_vs_hyb_v1,tetris_dqn_defensive_vs_hybrid_v1.keras,212,328,0,212,39.3,8723.7,52.9,29.8,0.488,21341,2411,415,290,24457,45.3
+def_vs_heu_v1,tetris_dqn_defensive_vs_heuristic_v1.keras,150,390,0,150,27.8,7780.9,46.0,24.9,0.463,19545,1844,252,211,21852,40.5
