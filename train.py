@@ -1,5 +1,6 @@
 """Train agent, outputs a saved model file"""
 
+import os
 import numpy as np
 import pygame
 import random
@@ -35,7 +36,7 @@ STATE_SIZE = 4 + NUM_PIECES + NUM_PIECES + 1 + 1
 MEM_SIZE = 50000
 BATCH_SIZE = 128
 MAX_PIECES = 250
-DISCOUNT = 0.8
+DISCOUNT = 0.95
 EPOCHS = 1
 EPSILON_START = 1.0
 EPSILON_MIN = 0.05
@@ -417,7 +418,8 @@ def _draw_figure(rewards: list, filename: str):
 
     ax.set(xlabel="Episode", ylabel="Reward", title="DQN rewards")
     ax.legend()
-    fig.savefig(f"./res/rewards_{filename}.png")
+    strategy_name = filename.split("_vs_")[0]
+    fig.savefig(f"./res/{strategy_name}/rewards_{filename}.png")
     plt.close(fig)
 
 
@@ -439,7 +441,9 @@ def train():
         choice = input("Invalid. Enter 1/2/3/4: ").strip()
 
     opponent_role = OPPONENTS[int(choice) - 1]
-    save_path = f"./models/tetris_dqn_{strategy_name}_vs_{opponent_role}.keras"
+    os.makedirs(f"./models/{strategy_name}", exist_ok=True)
+    os.makedirs(f"./res/{strategy_name}", exist_ok=True)
+    save_path = f"./models/{strategy_name}/tetris_dqn_{strategy_name}_vs_{opponent_role}.keras"
     print(f"Training: {strategy_name} → {save_path}\n")
 
     if not pygame.get_init():

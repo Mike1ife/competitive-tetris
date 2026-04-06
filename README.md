@@ -1,78 +1,161 @@
 # Competitive Tetris
 
-## Reference
-https://github.com/nuno-faria/tetris-ai/tree/master
+A 1v1 competitive Tetris game with DQN-trained AI agents. Players (human or AI) compete head-to-head with a garbage line attack system. Agents are trained with strategy-specific reward functions and can be evaluated in an automated tournament.
 
 ---
 
-## How the AI Works
+## Demo
 
-### Step 1 — Find the Best Placement
-- Try every combination of rotation × column position
-- Simulate each placement on a copy of the board
-- Score each resulting board using a trained DQN model:
-  - **Lines cleared** (more = better)
-  - **Max height** (lower = better)
-  - **Holes** (fewer = better)
-  - **Bumpiness** (smoother = better)
-  - **Current piece** (one-hot encoded)
-  - **Hold piece** (one-hot encoded)
-  - **Opponent height** (higher = better for us)
-  - **Hold availability**
-- Pick the placement with the highest Q-value
-
-### Step 2 — Execute the Placement
-- Rotate to target orientation (with SRS wall kicks)
-- Move left/right to the target column
-- Hard drop straight down
+Two AI agents playing against each other, with real-time combo display and garbage attacks.
 
 ---
 
-## Design Decisions
+## Setup
 
-### Down Key
-The agent does not use the down key to move piece by piece. Instead, it finds the destination first, then hard drops straight down. This mirrors how a human plays — think first, then hold down.
+**Requirements:** Python ~3.12
 
-### Dropping Rate
-`FALL_INTERVAL` controls how fast pieces drop. Instead of always dropping row+1, the rate can be increased (row+rate) to represent different difficulty levels.
+```bash
+pip install -r requirements.txt
+```
 
-### Fairness — Speed Cap Mode
-Since the AI decides in ~1ms (inhumanly fast), the game uses a **speed cap** approach:
-- The agent is limited to placing one piece per cap interval
-- Three difficulty levels control the cap:
-  - **Easy** — 1000ms per piece
-  - **Medium** — 500ms per piece
-  - **Hard** — 333ms per piece
+Dependencies: `numpy~=2.4`, `pygame~=2.6`, `tensorflow`, `matplotlib`
+
+---
+
+## Usage
+
+### Play the Game
+```bash
+python game.py
+```
+Select P1/P2 as human or AI (choose a model from `./models/`), pick difficulty, and play.
+
+### Train an Agent
+```bash
+python train.py
+```
+Interactive prompts select strategy and opponent type. Outputs:
+- Model → `./models/{strategy}/tetris_dqn_{strategy}_vs_{opponent}.keras`
+- Reward curve → `./res/{strategy}/rewards_{strategy}_vs_{opponent}.png` (every 200 episodes)
+
+### Run a Tournament
+```bash
+python tournament.py
+```
+Auto-detects all `.keras` models in `./models/` (including subfolders), runs a double round-robin, and saves results to `./res/tournament_results.csv`.
+
+---
+
+## AI Architecture
+
+### Agent Pipeline
+Each new piece triggers one decision cycle:
+1. **Pathfinder** enumerates all valid placements (rotation × column), including hold actions
+2. **Decider** scores each placement using the trained DQN model
+3. The highest Q-value placement is selected and executed via hard drop
+
+### State Vector (20 features)
+```
+[max_height, holes, bumpiness, lines_cleared,
+ piece_one_hot(7), hold_one_hot(7),
+ opponent_max_height, hold_available]
+```
+
+### DQN Training
+- Architecture: 3 hidden layers (64→64→32), Huber loss, Adam optimizer
+- Experience replay (buffer size 50,000), target network (updated every 200 steps)
+- Epsilon-greedy exploration decaying from 1.0 → 0.05
+- Opponent modes: `heuristic`, `random`, `agent` (self-play), `hybrid`
+- Random garbage pre-fill at episode start for diverse board states
+
+### Strategies
+Three reward functions shape agent behavior:
+
+| Strategy | Goal | Line rewards | Penalties |
+|---|---|---|---|
+| **Neutral** | Balanced | Singles penalized, Tetrises rewarded | Holes, bumpiness, height |
+| **Offensive** | Maximize garbage sent | High Tetris bonus + garbage multiplier | Holes, bumpiness, height |
+| **Defensive** | Survive | Reward all clears equally | Holes, bumpiness, height increase |
+
+Death/win bonuses are applied at episode end per strategy.
 
 ---
 
 ## Game Mechanics
 
-### Garbage System (Guideline-compliant)
-- Attack table: single=0, double=1, triple=2, tetris=4 garbage lines
-- Total lines cleared (including garbage lines) determine attack strength
-- Pending garbage queue with counter-attack cancellation
-- Garbage rises from the bottom on a non-clearing placement
-- Consistent single-hole garbage rows per batch (Jstris style)
+### Garbage System
+- Attack table: Single=0, Double=1, Triple=2, Tetris=4 lines
+- Combo bonus: +1 garbage per consecutive clear
+- Back-to-Back Tetris: +1 bonus garbage
+- Garbage cancellation: incoming lines are offset by your own attack
+- Consistent single-hole column per garbage batch (Jstris-style)
 
-### Combo System
-- Consecutive line clears increment a combo counter
-- Each combo level adds +1 bonus garbage on top of the base attack
+### Scoring
+| Clear | Points |
+|---|---|
+| Single | 100 |
+| Double | 300 |
+| Triple | 500 |
+| Tetris | 800 |
+| B2B Tetris | 1200 |
+| Combo bonus | 50 × combo |
+| Hard drop | 2 per cell |
 
-### Back-to-Back
-- Consecutive Tetrises send +1 bonus garbage
-- Only singles, doubles, or triples break the B2B chain
+### Hold Piece
+Swap the current piece into hold (once per piece). Hold is available for both human and AI players.
 
-### Scoring (Guideline-compliant)
-- Single: 100, Double: 300, Triple: 500, Tetris: 800
-- B2B Tetris: 1200 (800 + 400 bonus)
-- Combo bonus: 50 × combo count
-- Hard drop: 2 points per cell dropped
+### SRS Wall Kicks
+Full Super Rotation System with per-piece kick tables for all rotation states.
+
+### Difficulty (AI speed cap)
+| Level | ms per piece |
+|---|---|
+| Easy | 1000 |
+| Medium | 500 |
+| Hard | 333 |
 
 ---
 
-## Training
-- DQN with experience replay, target network, epsilon-greedy exploration
-- Three strategy-specific reward functions: neutral, offensive, defensive
-- Trained against a heuristic opponent
-- Garbage pre-fill at episode start for diverse board states
+## Project Structure
+
+```
+competitive-tetris/
+├── game.py              # Entry point, game loop, rendering
+├── home.py              # Main menu UI
+├── tetris.py            # Core game logic (board, pieces, gravity, garbage)
+├── config.py            # Constants, tetromino shapes, SRS tables, key bindings
+├── train.py             # DQN training loop
+├── tournament.py        # Automated multi-model tournament with CSV export
+├── agents/
+│   ├── agent.py         # Top-level agent (Pathfinder + Decider)
+│   ├── pathfinder.py    # Enumerate all valid placements
+│   ├── decider.py       # DQN model inference, state construction
+│   └── strategy.py      # Reward functions and heuristic scorer
+├── models/
+│   ├── defensive/       # Trained defensive models
+│   ├── neutral/         # Trained neutral models
+│   └── offensive/       # Trained offensive models
+└── res/
+    ├── defensive/       # Reward curves for defensive training runs
+    ├── neutral/         # Reward curves for neutral training runs
+    ├── offensive/       # Reward curves for offensive training runs
+    └── tournament_results.csv
+```
+
+---
+
+## Controls
+
+| Action | P1 | P2 |
+|---|---|---|
+| Move left/right | A / D | ← / → |
+| Rotate CW / CCW | W / Z | ↑ / . |
+| Rotate 180° | X | , |
+| Hold | Q | RShift |
+| Soft drop | S | ↓ |
+| Hard drop | Space | / |
+
+---
+
+## Reference
+- Tetris AI base: https://github.com/nuno-faria/tetris-ai

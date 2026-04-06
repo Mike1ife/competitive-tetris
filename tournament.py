@@ -302,11 +302,17 @@ def _label(filename: str) -> str:
 
 if __name__ == "__main__":
     models_dir = "./models"
-    model_files = sorted(f for f in os.listdir(models_dir) if f.endswith(".keras"))
+    model_files = []
+    for root, dirs, files in os.walk(models_dir):
+        for f in files:
+            if f.endswith(".keras"):
+                rel = os.path.relpath(os.path.join(root, f), models_dir)
+                model_files.append(rel)
+    model_files = sorted(model_files)
     if not model_files:
         print("No .keras models found in ./models/")
     else:
-        players = {_label(f): f for f in model_files}
+        players = {_label(os.path.basename(f)): f for f in model_files}
         print(f"Found {len(players)} models:")
         for label, path in players.items():
             print(f"  {label:<16} → {path}")
