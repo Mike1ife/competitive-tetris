@@ -8,7 +8,6 @@ from collections import defaultdict
 import csv
 import os
 import time
-import numpy as np
 import pygame
 
 from config import P1_COMMANDS, P2_COMMANDS, BOARD_W, PADDING
@@ -16,13 +15,14 @@ from tetris import Tetris
 from agents.agent import Agent
 
 
-ROUNDS_PER_MATCHUP = 30
+ROUNDS_PER_MATCHUP = 2
 MAX_PIECES = 500
 
 
 # ---------------------------------------------------------------------------
 # Single game simulation
 # ---------------------------------------------------------------------------
+
 
 def run_game(p1_agent: Agent, p2_agent: Agent, max_pieces: int = MAX_PIECES) -> dict:
     """Simulate one headless 1v1 game. Returns per-game stats dict."""
@@ -33,10 +33,8 @@ def run_game(p1_agent: Agent, p2_agent: Agent, max_pieces: int = MAX_PIECES) -> 
 
     p1_piece = None
     p2_piece = None
-    p1_pieces = 0
-    p2_pieces = 0
-    p1_combo_count = 0
-    p2_combo_count = 0
+    p1_pieces = p1_combo_count = p1_max_combo = p1_max_height = 0
+    p2_pieces = p2_combo_count = p2_max_combo = p2_max_height = 0
     dt = 1000 // 60
 
     while True:
@@ -51,17 +49,23 @@ def run_game(p1_agent: Agent, p2_agent: Agent, max_pieces: int = MAX_PIECES) -> 
                 p1_prev_combo = p1.combo
                 p1_piece = p1.piece
                 p1_pieces += 1
+
                 if p1_pieces <= max_pieces:
                     cmds = p1_agent.get_command_sequence(
-                        p1.board.copy(), p1.piece,
+                        p1.board.copy(),
+                        p1.piece,
                         p2.get_game_state()["max_height"],
-                        p1.hold_piece, p1.hold_used,
+                        p1.hold_piece,
+                        p1.hold_used,
                         p1._get_next_piece_info(),
                     )
                     for cmd in cmds:
                         p1.execute(cmd)
+
+                p1_max_height = max(p1_max_height, p1.get_game_state()["max_height"])
                 if p1.combo > p1_prev_combo:
                     p1_combo_count += 1
+                    p1_max_combo = max(p1_max_combo, p1_combo_count)
                 pygame.event.clear()
 
         if not p2.game_over:
@@ -69,17 +73,23 @@ def run_game(p1_agent: Agent, p2_agent: Agent, max_pieces: int = MAX_PIECES) -> 
                 p2_prev_combo = p2.combo
                 p2_piece = p2.piece
                 p2_pieces += 1
+
                 if p2_pieces <= max_pieces:
                     cmds = p2_agent.get_command_sequence(
-                        p2.board.copy(), p2.piece,
+                        p2.board.copy(),
+                        p2.piece,
                         p1.get_game_state()["max_height"],
-                        p2.hold_piece, p2.hold_used,
+                        p2.hold_piece,
+                        p2.hold_used,
                         p2._get_next_piece_info(),
                     )
                     for cmd in cmds:
                         p2.execute(cmd)
+
+                p2_max_height = max(p2_max_height, p2.get_game_state()["max_height"])
                 if p2.combo > p2_prev_combo:
                     p2_combo_count += 1
+                    p2_max_combo = max(p2_max_combo, p2_combo_count)
                 pygame.event.clear()
 
         p1.update(dt)
@@ -116,6 +126,10 @@ def run_game(p1_agent: Agent, p2_agent: Agent, max_pieces: int = MAX_PIECES) -> 
         "p2_height": p2.get_game_state()["max_height"],
         "p1_combo_count": p1_combo_count,
         "p2_combo_count": p2_combo_count,
+        "p1_max_combo": p1_max_combo,
+        "p2_max_combo": p2_max_combo,
+        "p1_max_height": p1_max_height,
+        "p2_max_height": p2_max_height,
     }
 
 
@@ -123,7 +137,10 @@ def run_game(p1_agent: Agent, p2_agent: Agent, max_pieces: int = MAX_PIECES) -> 
 # Tournament
 # ---------------------------------------------------------------------------
 
-def run_tournament(players: dict[str, str], rounds_per_matchup: int = ROUNDS_PER_MATCHUP):
+
+def run_tournament(
+    players: dict[str, str], rounds_per_matchup: int = ROUNDS_PER_MATCHUP
+):
     """
     Double round-robin tournament.
     players: {label: model_filename}
@@ -132,20 +149,32 @@ def run_tournament(players: dict[str, str], rounds_per_matchup: int = ROUNDS_PER
     pygame.init()
 
     agents = {
-        label: Agent(path, list(P1_COMMANDS.keys()))
-        for label, path in players.items()
+        label: Agent(path, list(P1_COMMANDS.keys())) for label, path in players.items()
     }
 
     matchups = list(permutations(players.keys(), 2))
     total_matches = len(matchups) * rounds_per_matchup
 
-    stats = defaultdict(lambda: {
-        "wins": 0, "losses": 0, "draws": 0, "kills": 0,
-        "score": 0, "lines": 0, "garbage_sent": 0, "pieces": 0,
-        "combo_count": 0,
-        "clears": {1: 0, 2: 0, 3: 0, 4: 0},
-        "scores_list": [], "lines_list": [], "garbage_list": [],
-    })
+    stats = defaultdict(
+        lambda: {
+            "wins": 0,
+            "losses": 0,
+            "draws": 0,
+            "kills": 0,
+            "deaths": 0,
+            "max_height": 0,
+            "score": 0,
+            "lines": 0,
+            "garbage_sent": 0,
+            "pieces": 0,
+            "combo_count": 0,
+            "max_combo": 0,
+            "clears": {1: 0, 2: 0, 3: 0, 4: 0},
+            "scores_list": [],
+            "lines_list": [],
+            "garbage_list": [],
+        }
+    )
 
     print(f"Models      : {len(players)}")
     print(f"Matchups    : {len(matchups)}  (double round robin)")
@@ -173,12 +202,14 @@ def run_tournament(players: dict[str, str], rounds_per_matchup: int = ROUNDS_PER
                 stats[away]["losses"] += 1
                 if result["cause"] == "p2_died":
                     stats[home]["kills"] += 1
+                    stats[away]["deaths"] += 1
             elif result["winner"] == "p2":
                 winner_label = away
                 stats[away]["wins"] += 1
                 stats[home]["losses"] += 1
                 if result["cause"] == "p1_died":
                     stats[away]["kills"] += 1
+                    stats[home]["deaths"] += 1
             else:
                 winner_label = "draw"
                 stats[home]["draws"] += 1
@@ -190,6 +221,8 @@ def run_tournament(players: dict[str, str], rounds_per_matchup: int = ROUNDS_PER
                 stats[label]["garbage_sent"] += result[f"{side}_garbage_sent"]
                 stats[label]["pieces"] += result[f"{side}_pieces"]
                 stats[label]["combo_count"] += result[f"{side}_combo_count"]
+                stats[label]["max_combo"] += result[f"{side}_max_combo"]
+                stats[label]["max_height"] += result[f"{side}_max_height"]
                 stats[label]["scores_list"].append(result[f"{side}_score"])
                 stats[label]["lines_list"].append(result[f"{side}_lines"])
                 stats[label]["garbage_list"].append(result[f"{side}_garbage_sent"])
@@ -225,8 +258,8 @@ def run_tournament(players: dict[str, str], rounds_per_matchup: int = ROUNDS_PER
     for label, s in standings:
         avg_score = s["score"] / games_per_player if games_per_player else 0
         avg_lines = s["lines"] / games_per_player if games_per_player else 0
-        avg_sent  = s["garbage_sent"] / games_per_player if games_per_player else 0
-        win_pct   = s["wins"] / games_per_player * 100 if games_per_player else 0
+        avg_sent = s["garbage_sent"] / games_per_player if games_per_player else 0
+        win_pct = s["wins"] / games_per_player * 100 if games_per_player else 0
         print(
             f"  {label:<16}  {s['wins']:>4}  {s['losses']:>4}  {s['draws']:>4}  {s['kills']:>5}"
             f"  {win_pct:>5.1f}%  {avg_score:>10.1f}  {avg_lines:>10.1f}  {avg_sent:>9.1f}"
@@ -253,27 +286,63 @@ def run_tournament(players: dict[str, str], rounds_per_matchup: int = ROUNDS_PER
     csv_path = "./res/tournament_results.csv"
     with open(csv_path, "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow([
-            "player", "model",
-            "wins", "losses", "draws", "kills", "win_pct",
-            "avg_score", "avg_lines", "avg_garbage_sent", "lines_per_piece",
-            "singles", "doubles", "triples", "tetrises",
-            "total_combos", "combos_per_game",
-        ])
+        writer.writerow(
+            [
+                "player",
+                "model",
+                "wins",
+                "losses",
+                "draws",
+                "kills",
+                "win_pct",
+                "avg_score",
+                "avg_lines",
+                "avg_garbage_sent",
+                "avg_max_height",
+                "lines_per_piece",
+                "singles",
+                "doubles",
+                "triples",
+                "tetrises",
+                "total_combos",
+                "combos_per_game",
+                "avg_max_combo",
+            ]
+        )
         for label, s in standings:
             avg_score = s["score"] / games_per_player if games_per_player else 0
             avg_lines = s["lines"] / games_per_player if games_per_player else 0
-            avg_sent  = s["garbage_sent"] / games_per_player if games_per_player else 0
-            win_pct   = s["wins"] / games_per_player * 100 if games_per_player else 0
+            avg_sent = s["garbage_sent"] / games_per_player if games_per_player else 0
+            avg_max_height = (
+                s["max_height"] / games_per_player if games_per_player else 0
+            )
+            win_pct = s["wins"] / games_per_player * 100 if games_per_player else 0
             lpp = s["lines"] / s["pieces"] if s["pieces"] else 0
             cpg = s["combo_count"] / games_per_player if games_per_player else 0
-            writer.writerow([
-                label, players[label],
-                s["wins"], s["losses"], s["draws"], s["kills"], round(win_pct, 1),
-                round(avg_score, 1), round(avg_lines, 1), round(avg_sent, 1), round(lpp, 3),
-                s["clears"][1], s["clears"][2], s["clears"][3], s["clears"][4],
-                s["combo_count"], round(cpg, 1),
-            ])
+            avg_max_combo = s["max_combo"] / games_per_player if games_per_player else 0
+            writer.writerow(
+                [
+                    label,
+                    players[label],
+                    s["wins"],
+                    s["losses"],
+                    s["draws"],
+                    s["kills"],
+                    round(win_pct, 1),
+                    round(avg_score, 1),
+                    round(avg_lines, 1),
+                    round(avg_sent, 1),
+                    round(avg_max_height, 1),
+                    round(lpp, 3),
+                    s["clears"][1],
+                    s["clears"][2],
+                    s["clears"][3],
+                    s["clears"][4],
+                    s["combo_count"],
+                    round(cpg, 1),
+                    round(avg_max_combo, 1),
+                ]
+            )
 
     total_time = time.time() - start_time
     m, s = divmod(int(total_time), 60)
@@ -289,9 +358,14 @@ def run_tournament(players: dict[str, str], rounds_per_matchup: int = ROUNDS_PER
 # ---------------------------------------------------------------------------
 
 _ABBREV = {
-    "defensive": "def", "offensive": "off", "neutral": "neu",
-    "heuristic": "heu", "hybrid": "hyb", "random": "rnd",
+    "defensive": "def",
+    "offensive": "off",
+    "neutral": "neu",
+    "heuristic": "heu",
+    "hybrid": "hyb",
+    "random": "rnd",
 }
+
 
 def _label(filename: str) -> str:
     """Convert 'tetris_dqn_defensive_vs_heuristic_v1.keras' → 'def_vs_heu_v1'"""
