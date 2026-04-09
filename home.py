@@ -58,7 +58,9 @@ class ModelSelector:
 
     def render(self, screen: pygame.surface.Surface, font: pygame.font.Font):
         label_surf = font.render(self.label, True, (160, 160, 160))
-        screen.blit(label_surf, (self.center_x - label_surf.get_width() // 2, self.y - 18))
+        screen.blit(
+            label_surf, (self.center_x - label_surf.get_width() // 2, self.y - 18)
+        )
 
         self.btn_left.render(screen, font)
         self.btn_right.render(screen, font)
@@ -80,14 +82,24 @@ def _get_model_list():
     models_dir = "./models"
     if not os.path.isdir(models_dir):
         return []
-    return sorted(f for f in os.listdir(models_dir) if f.endswith(".keras"))
+    model_files = []
+    for root, dirs, files in os.walk(models_dir):
+        for f in files:
+            if f.endswith(".keras"):
+                rel = os.path.relpath(os.path.join(root, f), models_dir)
+                model_files.append(rel)
+    model_files = sorted(model_files)
+
+    return model_files
 
 
 def _parse_model_name(filename: str) -> str:
     """Convert filename like 'tetris_dqn_defensive_v1.keras' to 'Defensive v1'."""
     if not filename:
         return "—"
-    name = filename.replace(".keras", "").replace("tetris_dqn_", "")
+
+    name = filename.split("\\", 1)[1]
+    name = name.replace(".keras", "").replace("tetris_dqn_", "")
     # split off version suffix like _v1, _v2
     parts = name.rsplit("_", 1)
     if len(parts) == 2 and parts[1].startswith("v") and parts[1][1:].isdigit():
@@ -218,9 +230,16 @@ def run_home(
                     key_text = part[1:-1]
                     key_surf = font.render(key_text, True, (255, 255, 255))
                     pad = 4
-                    bg_rect = pygame.Rect(cx - pad, y - 2, key_surf.get_width() + pad * 2, key_surf.get_height() + 4)
+                    bg_rect = pygame.Rect(
+                        cx - pad,
+                        y - 2,
+                        key_surf.get_width() + pad * 2,
+                        key_surf.get_height() + 4,
+                    )
                     pygame.draw.rect(screen, (70, 65, 120), bg_rect, border_radius=4)
-                    pygame.draw.rect(screen, (100, 90, 160), bg_rect, 1, border_radius=4)
+                    pygame.draw.rect(
+                        screen, (100, 90, 160), bg_rect, 1, border_radius=4
+                    )
                     screen.blit(key_surf, (cx, y))
                     cx += key_surf.get_width() + pad * 2 + 4
                 else:
@@ -228,13 +247,47 @@ def run_home(
                     screen.blit(txt, (cx, y))
                     cx += txt.get_width() + 4
 
-        p1_keys = ["[A]","[D]","move  ","[W]","[Z]","rot  ","[X]","180  ","[Q]","hold  ","[S]","soft  ","[Space]","hard"]
-        p2_keys = ["[\u2190]","[\u2192]","move  ","[\u2191]","[.]","rot  ","[,]","180  ","[RShift]","hold  ","[\u2193]","soft  ","[/]","hard"]
+        p1_keys = [
+            "[A]",
+            "[D]",
+            "move  ",
+            "[W]",
+            "[Z]",
+            "rot  ",
+            "[X]",
+            "180  ",
+            "[Q]",
+            "hold  ",
+            "[S]",
+            "soft  ",
+            "[Space]",
+            "hard",
+        ]
+        p2_keys = [
+            "[\u2190]",
+            "[\u2192]",
+            "move  ",
+            "[\u2191]",
+            "[.]",
+            "rot  ",
+            "[,]",
+            "180  ",
+            "[RShift]",
+            "hold  ",
+            "[\u2193]",
+            "soft  ",
+            "[/]",
+            "hard",
+        ]
 
-        total_test = font_sm.render("A D move W Z rot X 180 Q hold S soft Space hard      ", True, (0,0,0))
+        total_test = font_sm.render(
+            "A D move W Z rot X 180 Q hold S soft Space hard      ", True, (0, 0, 0)
+        )
         p1_x = WIN_W // 2 - total_test.get_width() // 2 - 20
         render_key_hint(screen, font_sm, p1_x, hints_y, "P1:", (100, 200, 255), p1_keys)
-        render_key_hint(screen, font_sm, p1_x, hints_y + 30, "P2:", (255, 180, 100), p2_keys)
+        render_key_hint(
+            screen, font_sm, p1_x, hints_y + 30, "P2:", (255, 180, 100), p2_keys
+        )
 
         if last_stats:
             stats_y = hints_y + 60
