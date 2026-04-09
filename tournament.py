@@ -15,7 +15,7 @@ from tetris import Tetris
 from agents.agent import Agent
 
 
-ROUNDS_PER_MATCHUP = 10
+ROUNDS_PER_MATCHUP = 100
 MAX_PIECES = 500
 
 
@@ -378,6 +378,25 @@ def _label(filename: str) -> str:
     return "_".join(_ABBREV.get(p, p) for p in parts)
 
 
+# Leave empty to run ALL models, or list specific labels to filter:
+SELECTED_MODELS = [
+    "neu_vs_heu_v1",
+    "off_vs_heu_v1",
+    "off_vs_agent_v2",
+    "off_vs_hyb_v1",
+    "neu_vs_heu_v2",
+    "neu_vs_hyb_v2",
+    "neu_vs_rnd_v1",
+    "off_vs_agent_v1",
+    "off_vs_rnd_v1",
+    "neu_vs_agent_v1",
+    "neu_vs_hyb_v1",
+    "off_vs_hyb_v2",
+    "neu_vs_agent_v2",
+    "def_vs_heu_v2",
+    "off_vs_rnd_v2",
+]
+
 if __name__ == "__main__":
     models_dir = "./models"
     model_files = []
@@ -391,6 +410,8 @@ if __name__ == "__main__":
         print("No .keras models found in ./models/")
     else:
         players = {_label(os.path.basename(f)): f for f in model_files}
+        if SELECTED_MODELS:
+            players = {k: v for k, v in players.items() if k in SELECTED_MODELS}
         print(f"Found {len(players)} models:")
         for label, path in players.items():
             print(f"  {label:<16} → {path}")
