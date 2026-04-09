@@ -62,8 +62,8 @@ def run_game(p1_agent: Agent, p2_agent: Agent, max_pieces: int = MAX_PIECES) -> 
                         p1.execute(cmd)
 
                 p1_max_height = max(p1_max_height, p1.get_game_state()["max_height"])
-                p1_max_combo = max(p1_max_combo, p1.combo)
                 if p1.combo > 0:
+                    p1_max_combo = max(p1_max_combo, p1.combo)
                     p1_combo_count += 1
 
                 pygame.event.clear()
@@ -86,8 +86,8 @@ def run_game(p1_agent: Agent, p2_agent: Agent, max_pieces: int = MAX_PIECES) -> 
                         p2.execute(cmd)
 
                 p2_max_height = max(p2_max_height, p2.get_game_state()["max_height"])
-                p2_max_combo = max(p2_max_combo, p2.combo)
                 if p2.combo > 0:
+                    p2_max_combo = max(p2_max_combo, p2.combo)
                     p2_combo_count += 1
 
                 pygame.event.clear()
