@@ -15,7 +15,7 @@ from tetris import Tetris
 from agents.agent import Agent
 
 
-ROUNDS_PER_MATCHUP = 2
+ROUNDS_PER_MATCHUP = 10
 MAX_PIECES = 500
 
 
