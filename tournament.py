@@ -46,7 +46,6 @@ def run_game(p1_agent: Agent, p2_agent: Agent, max_pieces: int = MAX_PIECES) -> 
 
         if not p1.game_over:
             if p1.piece is not p1_piece:
-                p1_prev_combo = p1.combo
                 p1_piece = p1.piece
                 p1_pieces += 1
 
@@ -63,14 +62,14 @@ def run_game(p1_agent: Agent, p2_agent: Agent, max_pieces: int = MAX_PIECES) -> 
                         p1.execute(cmd)
 
                 p1_max_height = max(p1_max_height, p1.get_game_state()["max_height"])
-                if p1.combo > p1_prev_combo:
+                p1_max_combo = max(p1_max_combo, p1.combo)
+                if p1.combo > 0:
                     p1_combo_count += 1
-                    p1_max_combo = max(p1_max_combo, p1_combo_count)
+
                 pygame.event.clear()
 
         if not p2.game_over:
             if p2.piece is not p2_piece:
-                p2_prev_combo = p2.combo
                 p2_piece = p2.piece
                 p2_pieces += 1
 
@@ -87,9 +86,10 @@ def run_game(p1_agent: Agent, p2_agent: Agent, max_pieces: int = MAX_PIECES) -> 
                         p2.execute(cmd)
 
                 p2_max_height = max(p2_max_height, p2.get_game_state()["max_height"])
-                if p2.combo > p2_prev_combo:
+                p2_max_combo = max(p2_max_combo, p2.combo)
+                if p2.combo > 0:
                     p2_combo_count += 1
-                    p2_max_combo = max(p2_max_combo, p2_combo_count)
+
                 pygame.event.clear()
 
         p1.update(dt)
@@ -221,8 +221,8 @@ def run_tournament(
                 stats[label]["garbage_sent"] += result[f"{side}_garbage_sent"]
                 stats[label]["pieces"] += result[f"{side}_pieces"]
                 stats[label]["combo_count"] += result[f"{side}_combo_count"]
-                stats[label]["max_combo"] += result[f"{side}_max_combo"]
-                stats[label]["max_height"] += result[f"{side}_max_height"]
+                stats[label]["sum_max_combo"] += result[f"{side}_max_combo"]
+                stats[label]["sum_max_height"] += result[f"{side}_max_height"]
                 stats[label]["scores_list"].append(result[f"{side}_score"])
                 stats[label]["lines_list"].append(result[f"{side}_lines"])
                 stats[label]["garbage_list"].append(result[f"{side}_garbage_sent"])
@@ -315,12 +315,14 @@ def run_tournament(
             avg_lines = s["lines"] / games_per_player if games_per_player else 0
             avg_sent = s["garbage_sent"] / games_per_player if games_per_player else 0
             avg_max_height = (
-                s["max_height"] / games_per_player if games_per_player else 0
+                s["sum_max_height"] / games_per_player if games_per_player else 0
             )
             win_pct = s["wins"] / games_per_player * 100 if games_per_player else 0
             lpp = s["lines"] / s["pieces"] if s["pieces"] else 0
             cpg = s["combo_count"] / games_per_player if games_per_player else 0
-            avg_max_combo = s["max_combo"] / games_per_player if games_per_player else 0
+            avg_max_combo = (
+                s["sum_max_combo"] / games_per_player if games_per_player else 0
+            )
             writer.writerow(
                 [
                     label,
