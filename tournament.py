@@ -380,22 +380,20 @@ def _label(filename: str) -> str:
 
 # Leave empty to run ALL models, or list specific labels to filter:
 SELECTED_MODELS = [
-    "neu_vs_heu_v1",
     "off_vs_heu_v1",
-    "off_vs_agent_v2",
-    "off_vs_hyb_v1",
-    "neu_vs_heu_v2",
     "neu_vs_hyb_v2",
-    "neu_vs_rnd_v1",
-    "off_vs_agent_v1",
-    "off_vs_rnd_v1",
+    "neu_vs_heu_v1",
     "neu_vs_agent_v1",
     "neu_vs_hyb_v1",
-    "off_vs_hyb_v2",
-    "neu_vs_agent_v2",
-    "def_vs_heu_v2",
-    "off_vs_rnd_v2",
 ]
+
+# Top 5 in first round
+# off_vs_heu_v1
+# neu_vs_hyb_v2
+# neu_vs_heu_v1
+# neu_vs_agent_v1
+# neu_vs_hyb_v1
+
 
 if __name__ == "__main__":
     models_dir = "./models"
