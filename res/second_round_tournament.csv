@@ -1,0 +1,6 @@
+player,model,wins,losses,draws,kills,deaths,win_pct,avg_score,avg_lines,avg_garbage_sent,avg_max_height,lines_per_piece,singles,doubles,triples,tetrises,total_combos,combos_per_game,avg_max_combo
+off_vs_heu_v1,offensive\tetris_dqn_offensive_vs_heuristic_v1.keras,443,357,0,443,357,55.4,10825.3,70.2,41.4,16,0.544,36763,5482,1164,1238,18086,22.6,3.6
+neu_vs_hyb_v1,neutral\tetris_dqn_neutral_vs_hybrid_v1.keras,392,408,0,392,407,49,10262.8,65.9,38.6,16.3,0.532,36479,4790,867,1012,17533,21.9,3.6
+neu_vs_agent_v1,neutral\tetris_dqn_neutral_vs_agent_v1.keras,391,409,0,390,409,48.9,10438.4,67,39.5,16.3,0.534,35252,5222,1126,1133,17097,21.4,3.6
+neu_vs_hyb_v2,neutral\tetris_dqn_neutral_vs_hybrid_v2.keras,390,410,0,390,410,48.8,10284.6,66,38.8,16.4,0.534,35957,4909,942,1045,17501,21.9,3.5
+neu_vs_heu_v1,neutral\tetris_dqn_neutral_vs_heuristic_v1.keras,384,416,0,383,415,48,10141.1,64.6,38.3,16.3,0.531,35163,4835,965,995,17147,21.4,3.6
