@@ -436,14 +436,16 @@ def train():
     print("Select opponent:")
     for i, name in enumerate(OPPONENTS, 1):
         print(f"  {i}. {name}")
-    choice = input("Enter 1/2/3: ").strip()
+    choice = input("Enter 1/2/3/4: ").strip()
     while choice not in ("1", "2", "3", "4"):
         choice = input("Invalid. Enter 1/2/3/4: ").strip()
 
     opponent_role = OPPONENTS[int(choice) - 1]
     os.makedirs(f"./models/{strategy_name}", exist_ok=True)
     os.makedirs(f"./res/{strategy_name}", exist_ok=True)
-    save_path = f"./models/{strategy_name}/tetris_dqn_{strategy_name}_vs_{opponent_role}.keras"
+    save_path = (
+        f"./models/{strategy_name}/tetris_dqn_{strategy_name}_vs_{opponent_role}.keras"
+    )
     print(f"Training: {strategy_name} → {save_path}\n")
 
     if not pygame.get_init():
