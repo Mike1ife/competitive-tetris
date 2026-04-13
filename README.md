@@ -18,7 +18,7 @@ Two AI agents playing against each other, with real-time combo display and garba
 pip install -r requirements.txt
 ```
 
-Dependencies: `numpy~=2.4`, `pygame~=2.6`, `tensorflow`, `matplotlib`
+Dependencies: `numpy`, `pygame`, `tensorflow`, `matplotlib`, `pandas`
 
 ---
 
@@ -126,6 +126,7 @@ competitive-tetris/
 ├── config.py            # Constants, tetromino shapes, SRS tables, key bindings
 ├── train.py             # DQN training loop
 ├── tournament.py        # Automated multi-model tournament with CSV export
+├── chart.py             # Tournament stats chart export
 ├── agents/
 │   ├── agent.py         # Top-level agent (Pathfinder + Decider)
 │   ├── pathfinder.py    # Enumerate all valid placements
