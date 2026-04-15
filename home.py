@@ -98,8 +98,7 @@ def _parse_model_name(filename: str) -> str:
     if not filename:
         return "—"
 
-    name = filename.split("\\", 1)[1]
-    name = name.replace(".keras", "").replace("tetris_dqn_", "")
+    name = os.path.basename(filename).replace(".keras", "").replace("tetris_dqn_", "")
     # split off version suffix like _v1, _v2
     parts = name.rsplit("_", 1)
     if len(parts) == 2 and parts[1].startswith("v") and parts[1][1:].isdigit():
